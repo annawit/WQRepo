@@ -9,6 +9,7 @@ library(shinythemes)
 library(viridis)
 
 load("ShinyAllData.Rdata")
+#brings in object "dta2"
 load("PracticeDataLocationInfo.Rdata")
 
 stationInfo$MonitoringLocationIdentifier <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)

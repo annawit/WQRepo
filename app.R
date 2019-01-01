@@ -11,7 +11,7 @@ library(viridis)
 load("ShinyAllData.Rdata")
 load("PracticeDataLocationInfo.Rdata")
 
-stationInfo$MonitoringLocationIdentifier <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)
+# stationInfo$MonitoringLocationIdentifier <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)
 
 stations <- stationInfo[,c(4:7)]
 stations$Latitude <- as.numeric(stations$Latitude)
