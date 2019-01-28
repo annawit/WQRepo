@@ -1,6 +1,14 @@
 library(readr)
 library(dplyr)
+
 stationsuses <- read_csv("stationsuses.csv")
+
+lasarid <- data.frame(unique(dta2$lasar_id))
+names(lasarid) <- "lasar_id"
+write.csv(lasarid, "lasarids.csv")
+
+NA_lasar <- dta2 %>% 
+  filter(is.na(lasar_id))
 
 load("ShinyAllData.Rdata")
 #brings in object "dta2"
@@ -31,7 +39,17 @@ mapData1 <- merge(dta3, stationInfo,
                   by.x = "lasar_id",
                   by.y = "MonitoringLocationIdentifier",
                   all.x = TRUE)
- 
+
+mapData.s <- merge(dta3, stationsuses1,
+                  by.x = "lasar_id",
+                  by.y = "Station_ID",
+                  all.x = TRUE, all.y = FALSE) %>% 
+  select(lasar_id, DO_use) %>% 
+  unique()
+
+
+
+
 mapData2 <- merge(mapData1, stationsuses1,
                  by.x = "lasar_id",
                  by.y = "Station_ID",

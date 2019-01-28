@@ -12,8 +12,9 @@ load("ShinyAllData.Rdata")
 load("PracticeDataLocationInfo.Rdata")
 
 # stationInfo$MonitoringLocationIdentifier <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)
-
+stationInfo$MonitoringLocationIdentifier <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)
 stations <- stationInfo[,c(4:7)]
+
 stations$Latitude <- as.numeric(stations$Latitude)
 stations$Longitude <- as.numeric(stations$Longitude)
 
@@ -24,13 +25,18 @@ mapData <- merge(dta2, stations,
                  by.y = "MonitoringLocationIdentifier",
                  all.x = TRUE, all.y = FALSE)
 
+md2 <- mapData %>%
+  filter(!is.na(lasar_id)) %>% 
+  filter(!is.na(datetime))
+
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
   navbarPage(
     "A Shiny App for Dissolved Oxygen",
 
 # Main Tab 1 --------------------------------------------------------------
-tabPanel("Tab 1",
+tabPanel("Select from map",
          tabsetPanel(
            
 
@@ -84,30 +90,30 @@ tabPanel(
                  selectInput(
                    inputId = "station_selection",
                    label = "Select station:",
-                   choices = levels(mapData$lasar_id)
+                   choices = paste(levels(as.factor(md2$lasar_id)), md2$MonitoringLocationName)
                  ),
                  selectInput(
                    inputId = "x",
                    label = "x-axis",
-                   choices = names(mapData),
+                   choices = names(md2),
                    selected = "datetime"
                  ),
                  selectInput(
                    inputId = "y",
                    label = "y-axis",
-                   choices = names(mapData),
+                   choices = names(md2),
                    selected = "do"
                  ),
                  selectInput(
                    inputId = "y2",
                    label = "2nd y-axis",
-                   choices = names(mapData),
+                   choices = names(md2),
                    selected = "temp"
                  ),
                  selectInput(
                    inputId = "y3",
                    label = "3rd y-axis",
-                   choices = names(mapData),
+                   choices = names(md2),
                    selected = "cond"
                  )
                ),
@@ -190,7 +196,7 @@ server <- function(input, output, session) {
   output$table <- DT::renderDataTable({
     shiny::validate(need(!is.null(input$map_marker_click$id),
                          "Click on a station to view data"))
-    maptabledata <- mapData %>% 
+    maptabledata <- md2 %>% 
       select(input$checkboxtablesorter) %>% 
       filter(lasar_id == input$map_marker_click$id)
     DT::datatable(
@@ -203,16 +209,14 @@ server <- function(input, output, session) {
   
   # output$dateplot <- renderPlot()
   output$nplot <- renderPlotly({
-    mapData %>% 
+    md2 %>% 
       group_by(month = floor_date(datetime, "month")) %>% 
       mutate(n_samples = n()) %>% 
       mutate(season = factor(month.abb[month(datetime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
       plot_ly(x = ~month, y = ~n_samples, type = "bar",
-              color = ~season, colors = viridis_pal()(3),
-              width = 1.5) %>% 
+              color = ~season, colors = viridis_pal()(3)) %>% 
       layout(yaxis = list(title = 'Count'), barmode = 'group')
-    # add_markers(color = ~season, colors = "Set3", size = ~n_samples)
   })
   
   output$avgdoplot <- renderPlotly({
@@ -228,12 +232,12 @@ server <- function(input, output, session) {
   })
   
   output$summaryboxplot <- renderPlotly({
-    boxplotData <- mapData %>% 
+    boxplotData <- md2 %>% 
       mutate(month = floor_date(datetime, "month")) %>%
       mutate(season = factor(month.abb[month(datetime)], levels = c("May", "Jun", "Jul", "Aug", "Oct")))
     
     plot_ly(boxplotData,
-            x = ~lasar_id,
+            x = ~as.factor(lasar_id),
             y = ~do,
             color = ~season,
             # colors = viridis_pal(option = "D")(5), 
@@ -243,18 +247,21 @@ server <- function(input, output, session) {
   })
   
   output$summaryboxplot2 <- renderPlotly({
-    boxplotData <- mapData %>% 
+    boxplotData <- md2 %>% 
       mutate(month = floor_date(datetime, "month")) %>%
       mutate(season = factor(month.abb[month(datetime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct")))
-    plot_ly(boxplotData, x = ~season, y = ~do, color = ~lasar_id, 
+    plot_ly(boxplotData,
+            x = ~season,
+            y = ~do,
+            color = ~lasar_id, 
             colors = viridis_pal(option = "D")(5), type = "box",
             text = ~paste('Site: ', MonitoringLocationName)) %>%
       layout(boxmode = "group")
   })
   
   output$summaryboxplot3 <- renderPlotly({
-    boxplotData <- mapData %>% 
+    boxplotData <- md2 %>% 
       mutate(year = factor(floor_date(datetime, "year")))
     # mutate(season = factor(month.abb[month(datetime)], levels=c("May", "Jun", "Jul", "Aug", "Oct")))
     plot_ly(boxplotData, x = ~year, y = ~do, color = ~lasar_id, 
@@ -269,13 +276,14 @@ server <- function(input, output, session) {
   
   stations_subset <- reactive({
     req(input$station_selection)
-    filter(mapData, lasar_id %in% input$station_selection)
+    filter(md2, lasar_id %in% input$station_selection)
   })
   
   output$subsetscatter <- renderPlotly({
     plot_ly(data = stations_subset(),
             x = ~get(input$x), y = ~get(input$y),
-            type = "scatter")
+            type = "scatter",
+            source = "firstplotselection")
   }) 
   
   output$subsetscatter2 <- renderPlotly({
