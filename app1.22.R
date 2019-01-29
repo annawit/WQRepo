@@ -7,6 +7,7 @@ library(lubridate)
 library(shinyWidgets)
 library(shinythemes)
 library(viridis)
+library(RColorBrewer)
 
 load("ShinyAllData.Rdata")
 stations <- read_csv("TEP_StationsInfo_anna.csv")
@@ -47,6 +48,9 @@ md2 <- mapData %>%
   filter(!is.na(datetime)) %>% 
   mutate(Site = paste(lasar_id, StationDes))
 
+#colors
+coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -74,11 +78,10 @@ tabPanel("Select from map",
                           ),
                         HTML("Select a station and variables,
                              then hit 'Download data'."),
-                        br(), br()
-                        # ,
-                        # downloadButton(
-                        #   outputId = "download_data",
-                        #   label = "Download table data")
+                        br(), br(),
+                        downloadButton(
+                          outputId = "download_data",
+                          label = "Download table data")
                       ),
                       mainPanel(DT::dataTableOutput("table"))
                       )
@@ -205,9 +208,10 @@ server <- function(input, output, session) {
   output$download_data <- downloadHandler(
     filename = "ShinyDataTableDownload.csv",
     content = function(file) { 
-      write.csv(md2 %>% 
-                  select(input$checkboxtablesorter %>%
-                           filter(MLocID == input$map_marker_click$id)))
+      m <- md2 %>% 
+        select(input$checkboxtablesorter %>%
+                 filter(MLocID == input$map_marker_click$id))
+      write.csv(m)
     }
   )
 
@@ -236,19 +240,23 @@ server <- function(input, output, session) {
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
       plot_ly(x = ~month, y = ~n_samples, type = "bar",
               color = ~season, colors = viridis_pal()(3)) %>% 
-      layout(yaxis = list(title = 'Count'), barmode = 'group')
+      layout(yaxis = list(title = 'Count'),
+             xaxis = list(title = "Date",
+                          range = c("2007-01-01", "2016-12-31")),
+             barmode = 'group')
   })
   
   output$avgdoplot <- renderPlotly({
     wdi <- md2 %>%
-      group_by(lasar_id, month.p = floor_date(datetime, "month")) %>% 
+      group_by(MLocID, month.p = floor_date(datetime, "month")) %>% 
       mutate(min = min(do))
     
-    plot_ly(wdi, x = ~month.p, y = ~min, color = ~as.factor(lasar_id),
-            colors = viridis_pal(option = "C")(5),
+    plot_ly(wdi, x = ~month.p, y = ~min, color = ~Site,
+            colors = coul,
             text = ~paste('Site:', StationDes)) %>%
-      layout(
-        xaxis = list(range = c("2007-01-01", "2016-12-31")))
+      layout(xaxis = list(title = "Date",
+                          range = c("2007-01-01", "2016-12-31")),
+             yaxis = list(title = "Minimum Dissolved Oxygen"))
   })
   
   output$summaryboxplot <- renderPlotly({
