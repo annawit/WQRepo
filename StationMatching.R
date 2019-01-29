@@ -87,3 +87,36 @@ label = ~paste0("Station ID: ", lasar_id, "
                                  Site Name: ", Station_Description),
              labelOptions = labelOptions(textOnly = FALSE),
              layerId = mapData$lasar_id)
+
+
+
+
+
+
+# 1/28/2019 with ben uses -------------------------------------------------
+
+library(readr)
+library(dplyr)
+
+load("ShinyAllData.Rdata")
+stations <- read_csv("TEP_StationsInfo_anna.csv")
+
+stns <- stations %>% 
+  select(-c(UserName, Created_Date, SnapDate)) %>% 
+  rename(Latitude = Lat_DD) %>% 
+  rename(Longitude = Long_DD)
+
+# filters missing LASAR ID, for now
+# add back in if TEP sites are given number
+dta3 <- dta2 %>% 
+  filter(!is.na(lasar_id))
+
+mapData1 <- merge(dta3, stns,
+                  by.x = "lasar_id",
+                  by.y = "station_key",
+                  all.x = TRUE, all.y = TRUE)
+
+md2 <- mapData1 %>%
+  filter(!is.na(lasar_id)) %>% 
+  filter(!is.na(datetime)) %>% 
+  mutate(Site = paste(lasar_id, StationDes))
