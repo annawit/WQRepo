@@ -9,25 +9,43 @@ library(shinythemes)
 library(viridis)
 
 load("ShinyAllData.Rdata")
-load("PracticeDataLocationInfo.Rdata")
+stations <- read_csv("TEP_StationsInfo_anna.csv")
+stations$Lat <- as.numeric(stations$Lat_DD)
+stations$Long <- as.numeric(stations$Long_DD)
 
-# stationInfo$MonitoringLocationIdentifier <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)
-stationInfo$MonitoringLocationIdentifier <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)
-stations <- stationInfo[,c(4:7)]
+stns <- stations %>% 
+  select(-c(UserName, Created_Date, SnapDate))
 
-stations$Latitude <- as.numeric(stations$Latitude)
-stations$Longitude <- as.numeric(stations$Longitude)
+# %>% 
+#   rename(Latitude = Lat_DD) %>% 
+#   rename(Longitude = Long_DD)
 
-#Solves issue of lasar ids coming in as factors
-dta2$lasar_id <- as.numeric(levels(dta2$lasar_id)[dta2$lasar_id])
-mapData <- merge(dta2, stations,
-                 by.x = "lasar_id",
-                 by.y = "MonitoringLocationIdentifier",
-                 all.x = TRUE, all.y = FALSE)
+# filters missing LASAR ID, for now
+# add back in if TEP sites are given number
+dta3 <- dta2 %>% 
+  filter(!is.na(lasar_id))
+
+mapData <- merge(dta3, stns,
+                  by.x = "lasar_id",
+                  by.y = "station_key",
+                  all.x = TRUE, all.y = TRUE)
+
+# stationInfo$MLocID <- gsub("-ORDEQ", "", stationInfo$MonitoringLocationIdentifier)
+# stations <- stationInfo[,c(4:7)]
+# 
+
+# 
+# #Solves issue of lasar ids coming in as factors
+# dta2$lasar_id <- as.numeric(levels(dta2$lasar_id)[dta2$lasar_id])
+# mapData <- merge(dta2, stations,
+#                  by.x = "lasar_id",
+#                  by.y = "MonitoringLocationIdentifier",
+#                  all.x = TRUE, all.y = FALSE)
 
 md2 <- mapData %>%
   filter(!is.na(lasar_id)) %>% 
-  filter(!is.na(datetime))
+  filter(!is.na(datetime)) %>% 
+  mutate(Site = paste(lasar_id, StationDes))
 
 
 # Define UI for application that draws a histogram
@@ -50,9 +68,9 @@ tabPanel("Select from map",
                           inputId = "checkboxtablesorter",
                           label = "Select table columns to display:",
                           choices = names(mapData),
-                          selected = c("lasar_id", "datetime", "temp", "ph",
+                          selected = c("MLocID", "lasar_id", "datetime", "temp", "ph",
                                        "do", "cond", "data_source",
-                                       "MonitoringLocationName")
+                                       "StationDes")
                           ),
                         HTML("Select a station and variables,
                              then hit 'Download data'."),
@@ -90,7 +108,7 @@ tabPanel(
                  selectInput(
                    inputId = "station_selection",
                    label = "Select station:",
-                   choices = paste(levels(as.factor(md2$lasar_id)), md2$MonitoringLocationName)
+                   choices = md2$Site
                  ),
                  selectInput(
                    inputId = "x",
@@ -169,11 +187,11 @@ server <- function(input, output, session) {
       addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
       addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
       addProviderTiles("CartoDB", group = "Carto") %>%
-      addMarkers(data = stations,
-                 label = ~paste0("Station ID: ", MonitoringLocationIdentifier, "
-                                 Site Name: ", MonitoringLocationName),
+      addMarkers(data = md2,
+                 label = ~paste0("Station ID: ", MLocID, "
+                                 Site Name: ", StationDes),
                  labelOptions = labelOptions(textOnly = FALSE),
-                 layerId = stations$MonitoringLocationIdentifier) %>%
+                 layerId = md2$MLocID) %>%
       addLayersControl(baseGroups = c("Esri Satellite Map",
                                       "Open Topo Map",
                                       "Carto"))
@@ -187,18 +205,20 @@ server <- function(input, output, session) {
   output$download_data <- downloadHandler(
     filename = "ShinyDataTableDownload.csv",
     content = function(file) { 
-      write.csv(mapData %>% 
+      write.csv(md2 %>% 
                   select(input$checkboxtablesorter %>%
-                           filter(lasar_id == input$map_marker_click$id)))
+                           filter(MLocID == input$map_marker_click$id)))
     }
   )
+
+# table -------------------------------------------------------------------
   
   output$table <- DT::renderDataTable({
     shiny::validate(need(!is.null(input$map_marker_click$id),
                          "Click on a station to view data"))
     maptabledata <- md2 %>% 
       select(input$checkboxtablesorter) %>% 
-      filter(lasar_id == input$map_marker_click$id)
+      filter(MLocID == input$map_marker_click$id)
     DT::datatable(
       data = maptabledata,
       options = list(pageLength = 10),
@@ -226,7 +246,7 @@ server <- function(input, output, session) {
     
     plot_ly(wdi, x = ~month.p, y = ~min, color = ~as.factor(lasar_id),
             colors = viridis_pal(option = "C")(5),
-            text = ~paste('Site:', MonitoringLocationName)) %>%
+            text = ~paste('Site:', StationDes)) %>%
       layout(
         xaxis = list(range = c("2007-01-01", "2016-12-31")))
   })
@@ -242,7 +262,7 @@ server <- function(input, output, session) {
             color = ~season,
             # colors = viridis_pal(option = "D")(5), 
             type = "box",
-            text = ~paste('Site: ', MonitoringLocationName)) %>%
+            text = ~paste('Site: ', StationDes)) %>%
       layout(boxmode = "group")
   })
   
@@ -256,7 +276,7 @@ server <- function(input, output, session) {
             y = ~do,
             color = ~lasar_id, 
             colors = viridis_pal(option = "D")(5), type = "box",
-            text = ~paste('Site: ', MonitoringLocationName)) %>%
+            text = ~paste('Site: ', StationDes)) %>%
       layout(boxmode = "group")
   })
   
@@ -266,7 +286,7 @@ server <- function(input, output, session) {
     # mutate(season = factor(month.abb[month(datetime)], levels=c("May", "Jun", "Jul", "Aug", "Oct")))
     plot_ly(boxplotData, x = ~year, y = ~do, color = ~lasar_id, 
             colors = viridis_pal(option = "D")(5), type = "box",
-            text = ~paste('Site: ', MonitoringLocationName)) %>%
+            text = ~paste('Site: ', StationDes)) %>%
       layout(boxmode = "group")
   })
   
@@ -276,7 +296,7 @@ server <- function(input, output, session) {
   
   stations_subset <- reactive({
     req(input$station_selection)
-    filter(md2, lasar_id %in% input$station_selection)
+    filter(md2, Site %in% input$station_selection)
   })
   
   output$subsetscatter <- renderPlotly({
