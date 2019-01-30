@@ -1,0 +1,28 @@
+SpawnCode,Spawn_dates,SpawnStart,SpawnEnd
+0,Not Designated,NULL,NULL
+11,X (No Spawning),NULL,NULL
+12,September 1 - May 15,9/1,5/15
+13,September 1 - June 15,9/1,6/15
+14,September 15 - May 15,9/15,5/15
+15,September 15 - June 15,9/15,6/15
+16,October 23 - April 15,10/23,4/15
+17,October 1 - May 15,10/1,5/15
+18,October 1 - June 15,10/1,6/15
+19,October 15 - May 15,10/15,5/15
+20,October 15 - June 15,10/15,6/15
+21,November 1 - May 15,11/1,5/15
+22,November 1 - May 1,11/1,5/1
+23,November 1 - June 15,11/1,6/15
+24,January 1 - May 15,1/1,5/15
+25,January 1 - June 15,1/1,6/15
+26,Bull Trout Spawning - No designated spawnign dates,NULL,NULL
+27,August 1 - June 15,8/1,6/15
+28,August 15 - June 15,8/15,6/15
+29,August 15 - May 15,8/15,5/15
+30,October 15 - March 31,10/15,3/31
+31,September 1 – April 30,9/1,4/30
+32,August 15 – May 30,9/15,5/30
+33,January 1 – July 15,1/1,7/15
+34,September 1 – April 15,9/1,4/15
+35,April 1 – July 15,4/1,7/15
+99,No Jurisdiction/Out of State/Tribal Lands,NULL,NULL
