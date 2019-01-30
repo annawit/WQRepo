@@ -1,3 +1,4 @@
-# WQRepo
+# North Coast Continuous Dissolved Oxygen Visualizer
 
-Contains scripts and data for a dissolved oxygen visualizing tool
+This app is to help visualize dissolved oxygen data around 14 sampling locations in Oregon's North Coast region over the span of about a decade.
+
