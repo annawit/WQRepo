@@ -106,12 +106,19 @@ tabPanel(
                    label = "3rd y-axis",
                    choices = names(md2),
                    selected = "cond"
+                 ),
+                 selectInput(
+                   inputId = "y4",
+                   label = "4th y-axis",
+                   choices = names(md2),
+                   selected = "ph"
                  )
                ),
                mainPanel(
-                 plotlyOutput("subsetscatter"),
-                 plotlyOutput("subsetscatter2"),
-                 plotlyOutput("subsetscatter3")
+                 plotlyOutput("subplot")
+                 # plotlyOutput("subsetscatter"),
+                 # plotlyOutput("subsetscatter2"),
+                 # plotlyOutput("subsetscatter3")
                )),
       tabPanel("Data Selected From Graph, in a Table",
                DT::dataTableOutput("graph_to_table"))
@@ -297,7 +304,25 @@ server <- function(input, output, session) {
             x = ~get(input$x), y = ~get(input$y3),
             type = "scatter")
   })
-  
+
+# Subplot -----------------------------------------------------------------
+
+  output$subplot <- renderPlotly({
+    
+    a <- plot_ly(data = stations_subset(),
+            x = ~get(input$x), y = ~get(input$y),
+            type = "scatter")
+    b <- plot_ly(data = stations_subset(),
+                 x = ~get(input$x), y = ~get(input$y2),
+                 type = "scatter")
+    c <- plot_ly(data = stations_subset(),
+                 x = ~get(input$x), y = ~get(input$y3),
+                 type = "scatter")
+    d <- plot_ly(data = stations_subset(),
+              x = ~get(input$x), y = ~get(input$y4),
+              type = "scatter")
+    subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+  })
   
   output$graph_to_table <- DT::renderDT({
     d <- event_data("plotly_selected", source = "A")
