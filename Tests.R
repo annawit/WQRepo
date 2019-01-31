@@ -247,14 +247,38 @@ md2 <- dta1 %>%
   mutate(Site = paste(MLocID, StationDes))
 
 
-psamp <- md2 %>% 
+ps <- md2 %>% 
   filter(grepl("11856", Site)) %>% 
-  select(datetime, temp, ph, cond, do) %>% 
+  select(datetime, temp, ph, cond, do)
+
+pp <- ps %>% 
+  tidyr::gather(parameter, value, -datetime) %>% 
+  transform(id = as.integer(factor(parameter)))
+
+qs <- ps %>% 
   tidyr::gather(parameter, value, -datetime) %>% 
   transform(id = as.integer(factor(parameter))) %>%
   plot_ly(x = ~datetime,
           y = ~value,
           color = ~parameter,
-          yaxis = ~paste0("y", id)) %>% 
+          colors = "Dark2",
+          yaxis = ~paste0("y", id),
+          type = "scatter") %>% 
   subplot(nrows = 4, shareX = TRUE)
-psamp  
+qs
+
+
+
+d <- plot_ly(data = ps,
+        x = ps$datetime, y = ps$do,
+        type = "scatter")
+c <- plot_ly(data = ps,
+             x = ps$datetime, y = ps$cond,
+             type = "scatter")
+t <- plot_ly(data = ps,
+             x = ps$datetime, y = ps$temp,
+             type = "scatter")
+h <- plot_ly(data = ps,
+             x = ps$datetime, y = ps$ph,
+             type = "scatter")
+subplot(d,c,t,h, nrows = 4, shareX = TRUE)
