@@ -19,10 +19,24 @@ economics %>%
 z <- economics %>% 
   tidyr::gather(colnam, valofthatcol, -date) %>% 
   transform(id = as.integer(factor(colnam))) %>% 
-  plot_ly(x = ~date, y = ~valofthatcol, color = ~colnam, colors = "Dark2",
+  plot_ly(x = ~date,
+          y = ~valofthatcol,
+          color = ~colnam, 
+          colors = "Dark2",
           yaxis = ~paste0("y", id)) %>% 
   add_lines() %>% 
   subplot(nrows = 5, shareX = TRUE)
 z
 
 economics <- economics
+
+
+# A different way ---------------------------------------------------------
+# https://plotly-book.cpsievert.me/merging-plotly-objects.html
+
+vars <- setdiff(names(economics), "date")
+plots <- lapply(vars, function(var) {
+  plot_ly(economics, x = ~date, y = as.formula(paste0("~", var))) %>%
+    add_lines(name = var)
+})
+subplot(plots, nrows = length(plots), shareX = TRUE, titleX = FALSE)
