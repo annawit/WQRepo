@@ -329,3 +329,72 @@ sm2 <- md2 %>%
   filter(DO_status == "fail") %>% 
   group_by(MLocID, month) %>% 
   tally()
+
+
+
+# nplot dev ---------------------------------------------------------------
+
+library(shiny)
+library(leaflet)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(lubridate)
+library(shinyWidgets)
+library(shinythemes)
+library(viridis)
+library(RColorBrewer)
+
+load("dataforwqapp.Rdata")
+# stations <- read_csv("TEP_StationsInfo_anna.csv")
+# stations$Lat <- as.numeric(stations$Lat_DD)
+# stations$Long <- as.numeric(stations$Long_DD)
+
+md2 <- dta1 %>%
+  filter(!is.na(datetime)) %>% 
+  mutate(Site = paste(MLocID, StationDes))
+
+#colors
+coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
+
+  md2 %>% 
+    group_by(month = floor_date(datetime, "month")) %>% 
+    mutate(n_samples = n()) %>% 
+    mutate(season = factor(month.abb[month(datetime)],
+                           levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+    plot_ly(x = ~month, y = ~n_samples, type = "bar",
+            color = ~season, colors = viridis_pal()(3)) %>%
+    layout(yaxis = list(title = 'Count'),
+           xaxis = list(title = "Date",
+                        range = c("2007-01-01", "2016-12-31")),
+           barmode = 'group')
+
+    md2 %>% 
+      group_by(month = floor_date(datetime, "month")) %>% 
+      mutate(n_samples = n()) %>% 
+      mutate(season = factor(month.abb[month(datetime)],
+                             levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+      plot_ly(x = ~month, y = ~n_samples,
+              color = ~season, colors = viridis_pal()(3)) %>%
+      add_bars() %>%
+      layout(yaxis = list(title = 'Count'),
+             xaxis = list(title = "Date",
+                          range = c("2007-01-01", "2016-12-31")),
+             barmode = 'group')
+    
+    md2 %>% 
+      group_by(month = floor_date(datetime, "month")) %>% 
+      mutate(n_samples = n()) %>% 
+      mutate(season = factor(month.abb[month(datetime)],
+                             levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+      plot_ly(x = ~month, y = ~n_samples, type = "bar",
+              color = ~season, colors = viridis_pal()(3)) %>%
+      layout(yaxis = list(title = 'Count'),
+             xaxis = list(title = "Date",
+                          range = c("2007-01-01", "2016-12-31")),
+             barmode = 'group')
+    
+    
+    maptabledata <- md2 %>% 
+      formatDate(3, "toLocaleStrong")
+    
