@@ -89,12 +89,12 @@ tabPanel(
                    choices = names(md2),
                    selected = "datetime"
                  ),
-                 selectInput(
-                   inputId = "y",
-                   label = "y-axis",
-                   choices = names(md2),
-                   selected = "do"
-                 ),
+                 # selectInput(
+                 #   inputId = "y",
+                 #   label = "y-axis",
+                 #   choices = names(md2),
+                 #   selected = "do"
+                 # ),
                  selectInput(
                    inputId = "y2",
                    label = "2nd y-axis",
@@ -115,10 +115,9 @@ tabPanel(
                  )
                ),
                mainPanel(
-                 plotlyOutput("subplot")
-                 # plotlyOutput("subsetscatter"),
-                 # plotlyOutput("subsetscatter2"),
-                 # plotlyOutput("subsetscatter3")
+                 textOutput("tab2text"),
+                 plotlyOutput("subplot"),
+                 verbatimTextOutput("brush")
                )),
       tabPanel("Data Selected From Graph, in a Table",
                DT::dataTableOutput("graph_to_table"))
@@ -280,6 +279,13 @@ server <- function(input, output, session) {
   
   # Main Tab 2 Items --------------------------------------------------------
   
+  output$tab2text <- renderUI({
+    str1 <- paste("You have selected", input$station_selection)
+    str2 <- paste("The elevation at this site is")
+    
+    HTML(paste(str1, str2, sep = '<br/>'))
+    
+  })
   
   stations_subset <- reactive({
     req(input$station_selection)
@@ -310,10 +316,14 @@ server <- function(input, output, session) {
   output$subplot <- renderPlotly({
     
     a <- plot_ly(data = stations_subset(),
-            x = ~get(input$x), y = ~get(input$y),
-            type = "scatter")
+            x = ~get(input$x),
+            y = ~do,
+            type = "scatter",
+            source = "A") %>% 
+      add_markers(color = ~DO_status)
     b <- plot_ly(data = stations_subset(),
-                 x = ~get(input$x), y = ~get(input$y2),
+                 x = ~get(input$x),
+                 y = ~get(input$y2),
                  type = "scatter")
     c <- plot_ly(data = stations_subset(),
                  x = ~get(input$x), y = ~get(input$y3),
@@ -321,14 +331,25 @@ server <- function(input, output, session) {
     d <- plot_ly(data = stations_subset(),
               x = ~get(input$x), y = ~get(input$y4),
               type = "scatter")
-    subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+    sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+    sp %>% 
+      layout(autosize = FALSE, width = 1000, height = 800)
   })
+
+# graph to table ----------------------------------------------------------
+
+  output$brush <- renderPrint({
+    d <- event_data("plotly_selected")
+    if (is.null(d)) "Click and drag events appear here" else d
+  })
+  
   
   output$graph_to_table <- DT::renderDT({
     d <- event_data("plotly_selected", source = "A")
-    if (is.null(d) == T) return(NULL)
+    if (is.null(d)) return(NULL)
     # else stations_subset() %>% filter(input$x > min(d$x) )
-    else stations_subset() %>% filter(between(input$x, min(d$x), max(d$x)))
+    else stations_subset() %>%
+      filter(between(input$x, min(d$x), max(d$x)))
     })
 
   } #End Server
