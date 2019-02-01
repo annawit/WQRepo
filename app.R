@@ -31,40 +31,67 @@ ui <- fluidPage(
     # Main Tab 1 --------------------------------------------------------------
     tabPanel("Select from map",
              tabsetPanel(
-               
-               
-               # Subpanel 1.1 ------------------------------------------------------------
                tabPanel("Table",
-                        sidebarLayout(
-                          sidebarPanel(
-                            leafletOutput("map"),
-                            textOutput("temp"),
-                            checkboxGroupButtons(
-                              inputId = "checkboxtablesorter",
-                              label = "Select table columns to display:",
-                              choices = names(md2),
-                              selected = c("MLocID", "datetime", "temp", "ph",
-                                           "do", "cond", "data_source",
-                                           "StationDes")
-                            ),
-                            HTML("Select a station and variables,
-                             then hit 'Download data'."),
-                            br(), br(),
-                            downloadButton(
-                              outputId = "download_data",
-                              label = "Download table data")
-                          ),
-                          mainPanel(DT::dataTableOutput("table"))
-                        )
-               ),
-               
-               # Subpanel 1.2 ------------------------------------------------------------
-               tabPanel("Placeholder"),
-               
-               # Subpanel 1.3 ------------------------------------------------------------
-               
-               tabPanel("Placeholder2"),
-             )),
+                        sidebarLayout(position = "right",
+                                      sidebarPanel(
+                                        textOutput("temp"),
+                                        checkboxGroupButtons(
+                                          inputId = "checkboxtablesorter",
+                                          label = "Select table columns to display:",
+                                          choices = names(md2),
+                                          selected = c("MLocID", "datetime", "temp", "ph",
+                                                       "do", "cond", "data_source",
+                                                       "StationDes")
+                                        ),
+                                        HTML("Select a station and variables,
+                                             then hit 'Download data'."),
+                                        br(),
+                                        br(),
+                                        downloadButton(
+                                          outputId = "download_data",
+                                          label = "Download table data")
+                                      ),
+                                      mainPanel(
+                                        leafletOutput("map"),
+                                        DT::dataTableOutput("table"))
+                                      
+                        )))),
+    
+             # tabsetPanel(
+             # 
+             # 
+             #   # Subpanel 1.1 ------------------------------------------------------------
+             #   tabPanel("Table",
+             #            sidebarLayout(
+             #              sidebarPanel(
+             #                leafletOutput("map"),
+             #                textOutput("temp"),
+             #                checkboxGroupButtons(
+             #                  inputId = "checkboxtablesorter",
+             #                  label = "Select table columns to display:",
+             #                  choices = names(md2),
+             #                  selected = c("MLocID", "datetime", "temp", "ph",
+             #                               "do", "cond", "data_source",
+             #                               "StationDes")
+             #                ),
+             #                HTML("Select a station and variables,
+             #                 then hit 'Download data'."),
+             #                br(), br(),
+             #                downloadButton(
+             #                  outputId = "download_data",
+             #                  label = "Download table data")
+             #                ),
+             #              mainPanel(DT::dataTableOutput("table"))
+             #              )
+             #            ),
+             # 
+             #   # Subpanel 1.2 ------------------------------------------------------------
+             #   tabPanel("Placeholder"),
+             # 
+             #   # Subpanel 1.3 ------------------------------------------------------------
+             # 
+             #   tabPanel("Placeholder2"),
+             # )),
     
     # Main Tab 2 --------------------------------------------------------------
     tabPanel("Data Overview",
