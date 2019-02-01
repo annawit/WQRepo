@@ -141,7 +141,7 @@ plot_ly(boxplotData, x = ~lasar_id, y = ~do, color = ~season, type = "box",
 library(tidyverse)
 library(lubridate)
 
-#original data
+#original data, called dta2
 load("ShinyAllData.Rdata")
 # stations list with geodata from Lesley Merrick
 stations <- read_csv("TEP_StationsInfo_anna.csv")
@@ -204,12 +204,16 @@ dtasp <- DO_base %>%
          SpawnEnd = if_else(SpawnEnd < SpawnStart, SpawnEnd + years(1), SpawnEnd),
          in_spawn = ifelse(datetime >= SpawnStart & datetime <= SpawnEnd & !is.na(SpawnStart), 1, 0 ),
          DO_lim = ifelse(in_spawn == 1, 11, crit_Instant),
-         DO_status = ifelse(do < DO_lim, "fail",
-                            ifelse(do >= DO_lim, "pass", "other")))
+         DO_status = ifelse(do < DO_lim, 0,
+                            ifelse(do >= DO_lim, 1, "other")))
+#results in a "failed to parse warning" - this should be ok
   
 summary(as.factor(dtasp$DO_status))
+# results in NAs, these items have DO sat only
 
-#NAs from DO sat only
+d <- dtasp[1:6,]
+write.csv(d, "tablesample.csv")
+
 names(dtasp)
 names(dta1)
 
@@ -281,4 +285,47 @@ t <- plot_ly(data = ps,
 h <- plot_ly(data = ps,
              x = ps$datetime, y = ps$ph,
              type = "scatter")
-subplot(d,c,t,h, nrows = 4, shareX = TRUE)
+sp <- subplot(d,c,t,h, nrows = 4, shareX = TRUE)
+sp %>% 
+  lay
+
+
+
+# Summary - how often is a site failing? ----------------------------------
+
+library(shiny)
+library(leaflet)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(lubridate)
+library(shinyWidgets)
+library(shinythemes)
+library(viridis)
+library(RColorBrewer)
+
+load("dataforwqapp.Rdata")
+
+md2 <- dta1 %>%
+  filter(!is.na(datetime)) %>% 
+  mutate(Site = paste(MLocID, StationDes))
+
+sm <- md2 %>% 
+  select(MLocID, datetime, DO_status) %>% 
+  mutate(month = floor_date(datetime, "month")) %>% 
+  group_by(MLocID, month) %>% 
+  count(DO_status = 0)
+
+sm2 <- md2 %>% 
+  select(MLocID, datetime, DO_status) %>% 
+  mutate(month = floor_date(datetime, "month")) %>% 
+  group_by(MLocID, month, DO_status) %>% 
+  tally()
+#gives the wrong thing, still gives count of passes or fails
+
+sm2 <- md2 %>% 
+  select(MLocID, datetime, DO_status) %>% 
+  mutate(month = floor_date(datetime, "month")) %>% 
+  filter(DO_status == "fail") %>% 
+  group_by(MLocID, month) %>% 
+  tally()
