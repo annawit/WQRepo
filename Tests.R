@@ -398,3 +398,81 @@ coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
     maptabledata <- md2 %>% 
       formatDate(3, "toLocaleStrong")
     
+    md2 %>% 
+      filter(grepl("13368", Site)) %>% 
+      group_by(month = floor_date(datetime, "month")) %>% 
+      mutate(n_samples = n()) %>% 
+      mutate(season = factor(month.abb[month(datetime)],
+                             levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+      plot_ly(x = ~month,
+              y = ~n_samples,
+              width = 5000000000,
+              type = "bar",
+              color = ~season, colors = viridis_pal()(3)) %>%
+      layout(yaxis = list(title = 'Count'),
+             xaxis = list(title = "Date",
+                          range = c("2007-01-01", "2016-12-31")),
+             barmode = 'group')
+
+    
+m <- md2 %>% 
+      filter(grepl("13368", Site)) %>% 
+      group_by(month = floor_date(datetime, "month")) %>% 
+      mutate(n_samples = n()) %>% 
+      mutate(season = factor(month.abb[month(datetime)],
+                             levels = c("May", "Jun", "Jul", "Aug", "Oct")))
+
+
+n <- md2 %>%
+  select(MLocID, StationDes, datetime, DO_status) %>% 
+  group_by(month = floor_date(datetime, "month"))
+  # mutate(n_samples = n()) %>% 
+  # mutate(season = factor(month.abb[month(datetime)],
+  #                        levels = c("May", "Jun", "Jul", "Aug", "Oct")))
+
+n2 <- n %>%
+  group_by(MLocID, month, DO_status) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  spread(DO_status, n, fill = 0) %>% 
+  rename(over = "1",
+         under = "0")
+  
+p <- plot_ly(n2,
+             x = ~as.factor(month),
+             y = ~under, type = 'bar', name = 'Under Limit') %>%
+  add_trace(y = ~over, name = 'Over Limit') %>%
+  layout(yaxis = list(title = 'Count'), barmode = 'stack')
+
+p
+
+# Animals <- c("giraffes", "orangutans", "monkeys")
+# SF_Zoo <- c(20, 14, 23)
+# LA_Zoo <- c(12, 18, 29)
+# data <- data.frame(Animals, SF_Zoo, LA_Zoo)
+
+# p <- plot_ly(data, x = ~Animals, y = ~SF_Zoo, type = 'bar', name = 'SF Zoo') %>%
+#   add_trace(y = ~LA_Zoo, name = 'LA Zoo') %>%
+#   layout(yaxis = list(title = 'Count'), barmode = 'stack')
+
+# https://stackoverflow.com/questions/25811756/summarizing-counts-of-a-factor-with-dplyr
+# df = tbl_df(data.frame(owner=c(0,0,1,1), obs1=c("quiet", "loud", "quiet", "loud"), obs2=c("loud", "loud", "quiet", "quiet")))
+# df %>%
+#   gather(observation, Val, obs1:obs2) %>% 
+#   group_by(owner,observation, Val) %>% 
+#   summarise(n= n()) %>%
+#   ungroup() %>%
+#   spread(Val, n, fill=0)
+# df
+# 
+# df %>%
+#   gather(observation, Val, obs1:obs2) %>% 
+#   group_by(owner,observation, Val) %>% 
+#   summarise(n= n()) %>% 
+#   ungroup() %>% 
+#   spread(Val, n, fill=0)
+# 
+# df %>%
+#   gather(observation, Val, obs1:obs2)
+
+p
