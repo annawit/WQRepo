@@ -9,6 +9,9 @@ library(shinythemes)
 library(viridis)
 library(RColorBrewer)
 
+# Data -------------------------------------------------------
+
+
 load("dataforwqapp.Rdata")
 # stations <- read_csv("TEP_StationsInfo_anna.csv")
 # stations$Lat <- as.numeric(stations$Lat_DD)
@@ -28,79 +31,69 @@ ui <- fluidPage(
   navbarPage(
     "Continuous Dissolved Oxygen Visualizer",
     
-    # Main Tab 1 --------------------------------------------------------------
+    # Select from map --------------------------------------------------------------
     tabPanel("Select from map",
-             tabsetPanel(
-               tabPanel("Table",
-                        sidebarLayout(position = "right",
-                                      sidebarPanel(
-                                        textOutput("temp"),
-                                        checkboxGroupButtons(
-                                          inputId = "checkboxtablesorter",
-                                          label = "Select table columns to display:",
-                                          choices = names(md2),
-                                          selected = c("MLocID", "datetime", "temp", "ph",
-                                                       "do", "cond", "data_source",
-                                                       "StationDes")
-                                        ),
-                                        HTML("Select a station and variables,
+             sidebarLayout(position = "right",
+                           sidebarPanel(
+                             wellPanel(
+                               textOutput("temp"),
+                               hr(),
+                               plotlyOutput("mininplot")),
+                             wellPanel(
+                               checkboxGroupButtons(
+                                 inputId = "checkboxtablesorter",
+                                 label = "Select table columns to display:",
+                                 choices = names(md2),
+                                 selected = c("MLocID", "datetime", "temp", "ph",
+                                              "do", "cond", "data_source",
+                                              "StationDes")
+                               )),
+                             wellPanel(
+                               HTML("Select a station and variables,
                                              then hit 'Download data'."),
-                                        br(),
-                                        br(),
-                                        downloadButton(
-                                          outputId = "download_data",
-                                          label = "Download table data")
-                                      ),
-                                      mainPanel(
-                                        leafletOutput("map"),
-                                        DT::dataTableOutput("table"))
-                                      
-                        )))),
+                               hr(),
+                               downloadButton(
+                                 outputId = "download_data",
+                                 label = "Download table data")
+                             )),
+                           mainPanel(
+                             wellPanel(leafletOutput("map")),
+                             wellPanel(DT::dataTableOutput("table"))
+                           )
+                           
+             )),
     
-             # tabsetPanel(
-             # 
-             # 
-             #   # Subpanel 1.1 ------------------------------------------------------------
-             #   tabPanel("Table",
-             #            sidebarLayout(
-             #              sidebarPanel(
-             #                leafletOutput("map"),
-             #                textOutput("temp"),
-             #                checkboxGroupButtons(
-             #                  inputId = "checkboxtablesorter",
-             #                  label = "Select table columns to display:",
-             #                  choices = names(md2),
-             #                  selected = c("MLocID", "datetime", "temp", "ph",
-             #                               "do", "cond", "data_source",
-             #                               "StationDes")
-             #                ),
-             #                HTML("Select a station and variables,
-             #                 then hit 'Download data'."),
-             #                br(), br(),
-             #                downloadButton(
-             #                  outputId = "download_data",
-             #                  label = "Download table data")
-             #                ),
-             #              mainPanel(DT::dataTableOutput("table"))
-             #              )
-             #            ),
-             # 
-             #   # Subpanel 1.2 ------------------------------------------------------------
-             #   tabPanel("Placeholder"),
-             # 
-             #   # Subpanel 1.3 ------------------------------------------------------------
-             # 
-             #   tabPanel("Placeholder2"),
-             # )),
-    
-    # Main Tab 2 --------------------------------------------------------------
+    # Data overview --------------------------------------------------------------
     tabPanel("Data Overview",
              # Subpanel Samples per year ------------------------------------------------------------
              tabsetPanel(
                tabPanel("Plot of total number of samples per year",
-                        plotlyOutput("nplot")),
+                        sidebarLayout(
+                          sidebarPanel(
+                            selectInput("plottype",
+                                        "Select:", 
+                                        choices = c("All data" = "nplot",
+                                                    "All over DO limit",
+                                                    "All under DO limit",
+                                                    "Stacked")
+                                        )),
+                        mainPanel(plotlyOutput("nplot"),
+                                  plotlyOutput("nstackplot"))
+                        )
+                        ),
                tabPanel("DO at each site",
-                        plotlyOutput("avgdoplot")),
+                        # sidebarLayout(
+                        #   sidebarPanel(
+                            checkboxGroupInput("checkGroup", 
+                                               label = h3("Sites"), 
+                                               choices = unique(md2$Site),
+                                               selected = unique(md2$Site)),
+                          # ),
+                          # mainPanel(
+                            plotlyOutput("avgdoplot")
+                            # )
+                        # )
+               ),
                
                # Subpanel boxplots ------------------------------------------------------------
                
@@ -225,13 +218,28 @@ server <- function(input, output, session) {
   
   output$download_data <- downloadHandler(
     filename = "ShinyDataTableDownload.csv",
-    content = function(file) { 
-      m <- md2 %>% 
-        select(input$checkboxtablesorter %>%
-                 filter(MLocID == input$map_marker_click$id))
-      write.csv(m)
+    content = function(file) {
+      m <- md2 %>%
+        select(input$checkboxtablesorter) %>%
+        filter(MLocID == input$map_marker_click$id)
+      write.csv(m, file)
     }
   )
+  
+  # output$download_data <- downloadHandler({
+  #   
+  #   m <- md2 %>% 
+  #     select(input$checkboxtablesorter) %>%
+  #     filter(MLocID == input$map_marker_click$id)
+  #   
+  #   filename = function() {
+  #     paste(m, ".csv", sep = "")
+  #   }
+  #   content = function(file) {
+  #     write.csv(m, file, row.names = FALSE)
+  #   }
+  # })
+  
 
 # table -------------------------------------------------------------------
   
@@ -244,6 +252,8 @@ server <- function(input, output, session) {
     DT::datatable(
       data = maptabledata,
       options = list(pageLength = 10,
+                     compact = TRUE,
+                     nowrap = TRUE,
                      scrollX = TRUE),
       rownames = FALSE,
       filter = 'bottom'
@@ -251,20 +261,86 @@ server <- function(input, output, session) {
       DT::formatDate("datetime", "toLocaleString")
   })
 
-# Subpanel 1.1 items ------------------------------------------------------
-  output$nplot <- renderPlotly({
+
+## mini nplot --------------------------------------------------------------
+
+  output$mininplot <- renderPlotly({
+    shiny::validate(need(!is.null(input$map_marker_click$id),
+                         "Click on a station on the map to view data"))
     md2 %>% 
+      filter(MLocID == input$map_marker_click$id) %>% 
       group_by(month = floor_date(datetime, "month")) %>% 
       mutate(n_samples = n()) %>% 
       mutate(season = factor(month.abb[month(datetime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
-      plot_ly(x = ~month, y = ~n_samples, type = "bar",
+      plot_ly(x = ~month,
+              y = ~n_samples,
+              type = "bar",
+              color = ~season,
+              colors = viridis_pal()(3)) %>%
+      layout(yaxis = list(title = 'Count'),
+             xaxis = list(title = "Date",
+                          range = c(min(md2$datetime), max(md2$datetime))),
+             barmode = 'group')
+  })  
+  
+  
+  # DATA OVERVIEW TAB----- 
+  n_sum <- reactive({
+    md2 %>% 
+      select(MLocID, StationDes, datetime, DO_status) %>% 
+      group_by(month = floor_date(datetime, "month")) %>% 
+      mutate(n_samples = n()) %>% 
+      mutate(season = factor(month.abb[month(datetime)],
+                             levels = c("May", "Jun", "Jul", "Aug", "Oct")))
+  })
+  
+  
+  
+# nplot ------------------------------------------------------
+  output$nplot <- renderPlotly({
+    # md2 %>% 
+    #   group_by(month = floor_date(datetime, "month")) %>% 
+    #   mutate(n_samples = n()) %>% 
+    #   mutate(season = factor(month.abb[month(datetime)],
+    #                          levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+      plot_ly(n_sum(),
+              x = ~as.factor(month),
+              y = ~n_samples,
+              type = "bar",
               color = ~season, colors = viridis_pal()(3)) %>%
       layout(yaxis = list(title = 'Count'),
              xaxis = list(title = "Date",
-                          range = c("2007-01-01", "2016-12-31")),
-             barmode = 'group')
+                          tickangle = 55
+                          # ,
+                          # range = c("2007-01-01", "2016-12-31")
+                          )
+      )
+             # ,
+             # barmode = 'group')
   })
+
+# stacked do count --------------------------------------------------------
+
+  output$nstackplot <- renderPlotly({
+    n2 <- n_sum() %>%
+      group_by(MLocID, month, DO_status) %>% 
+      summarise(n = n()) %>% 
+      ungroup() %>% 
+      spread(DO_status, n, fill = 0) %>% 
+      rename(over = "1",
+             under = "0")
+    
+    plot_ly(n2,
+            x = ~as.factor(month),
+            y = ~under,
+            type = 'bar', name = 'Under Limit') %>%
+      add_trace(y = ~over, name = 'Over Limit') %>%
+      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+  
+  })
+# do summary plot ---------------------------------------------------------
+
   
   output$avgdoplot <- renderPlotly({
     wdi <- md2 %>%
@@ -274,7 +350,9 @@ server <- function(input, output, session) {
     plot_ly(wdi, x = ~month.p, y = ~min,
             text = ~paste('Site:', StationDes)) %>%
       add_markers(color = ~Site,
-                  colors = coul) %>% 
+                  colors = coul,
+                  size = 3,
+                  alpha = 0.8) %>% 
       layout(xaxis = list(title = "Date",
                           range = c("2007-01-01", "2016-12-31")),
              yaxis = list(title = "Minimum Dissolved Oxygen"))
@@ -395,6 +473,26 @@ server <- function(input, output, session) {
       filter(between(input$x, min(d$x), max(d$x)))
     })
 
+  
+
+# DO map ------------------------------------------------------------------
+
+  output$DOmap <- renderLeaflet({
+    leaflet() %>%
+      addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
+      addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
+      addProviderTiles("CartoDB", group = "Carto") %>%
+      addMarkers(data = md2,
+                 lat = ~Lat_DD,
+                 lng = ~Long_DD,
+                 label = ~paste0("Station ID: ", MLocID, "
+                                 Site Name: ", StationDes),
+                 labelOptions = labelOptions(textOnly = FALSE),
+                 layerId = md2$MLocID) %>%
+      addLayersControl(baseGroups = c("Esri Satellite Map",
+                                      "Open Topo Map",
+                                      "Carto"))
+  })  
   } #End Server
 
 shinyApp(ui = ui, server = server)
