@@ -2,6 +2,7 @@ library(shiny)
 library(leaflet)
 library(ggplot2)
 library(dplyr)
+library(tidyr)
 library(plotly)
 library(lubridate)
 library(shinyWidgets)
@@ -13,14 +14,12 @@ library(RColorBrewer)
 
 
 load("dataforwqapp.Rdata")
-# stations <- read_csv("TEP_StationsInfo_anna.csv")
-# stations$Lat <- as.numeric(stations$Lat_DD)
-# stations$Long <- as.numeric(stations$Long_DD)
 
-md2 <- dta1
-# md2 <- dta1 %>%
-#   filter(!is.na(datetime)) %>% 
-#   mutate(Site = paste(MLocID, StationDes))
+md2 <- dta1 %>% 
+  mutate(DO_status = ifelse(DO_status == 0, "Below limit", "Above limit"))
+
+load("sitesummary.Rdata")
+sd <- sites
 
 #colors
 coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
@@ -70,29 +69,31 @@ ui <- fluidPage(
                tabPanel("Plot of total number of samples per year",
                         sidebarLayout(
                           sidebarPanel(
-                            selectInput("plottype",
+                            width = 3,
+                            selectInput(inputId = "plottype",
                                         "Select:", 
                                         choices = c("All data" = "nplot",
                                                     "All over DO limit",
                                                     "All under DO limit",
                                                     "Stacked")
-                                        )),
-                        mainPanel(plotlyOutput("nplot"),
-                                  plotlyOutput("nstackplot"))
+                            )),
+                          mainPanel(plotlyOutput("nplot"),
+                                    plotlyOutput("nstackplot"))
                         )
-                        ),
+               ),
+               # Subpanel DO at each site ----------------
                tabPanel("DO at each site",
-                        # sidebarLayout(
-                        #   sidebarPanel(
-                            checkboxGroupInput("checkGroup", 
+                        sidebarLayout(
+                          sidebarPanel(position = "right",
+                            checkboxGroupInput("SiteCheckGroup", 
                                                label = h3("Sites"), 
                                                choices = unique(md2$Site),
-                                               selected = unique(md2$Site)),
-                          # ),
-                          # mainPanel(
+                                               selected = unique(md2$Site))
+                          ),
+                          mainPanel(
                             plotlyOutput("avgdoplot")
-                            # )
-                        # )
+                          )
+                        )
                ),
                
                # Subpanel boxplots ------------------------------------------------------------
@@ -103,7 +104,7 @@ ui <- fluidPage(
                         plotlyOutput("summaryboxplot3"))
              )),
     
-    # Main Tab 3 --------------------------------------------------------------
+    # Search by Station --------------------------------------------------------------
     
     tabPanel(
       "Search by Station",
@@ -146,9 +147,15 @@ ui <- fluidPage(
                        choices = names(md2),
                        selected = "ph"
                      )
+                     # dateRangeInput(inputId = 'dateRange2',
+                     #                label = "Select dates:",
+                     #                start = min(md2$datetime), end = max(md2$datetime),
+                     #                min = min(md2$datetime), max = max(md2$datetime),
+                     #                separator = " to ", format = "mm/dd/yy",
+                     #                startview = 'year', weekstart = 0
+                     # )
                    ),
                    mainPanel(
-                     textOutput("tab2text"),
                      plotlyOutput("subplot"),
                      verbatimTextOutput("brush")
                    )),
@@ -158,7 +165,7 @@ ui <- fluidPage(
       )
     ),
     
-    # Main Tab 4 --------------------------------------------------------------
+    # Search by DO --------------------------------------------------------------
     
     tabPanel("Search by DO over/under limit",
              fluidPage(
@@ -199,13 +206,13 @@ server <- function(input, output, session) {
       addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
       addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
       addProviderTiles("CartoDB", group = "Carto") %>%
-      addMarkers(data = md2,
+      addMarkers(data = sd,
                  lat = ~Lat_DD,
                  lng = ~Long_DD,
                  label = ~paste0("Station ID: ", MLocID, "
                                  Site Name: ", StationDes),
                  labelOptions = labelOptions(textOnly = FALSE),
-                 layerId = md2$MLocID) %>%
+                 layerId = sd$MLocID) %>%
       addLayersControl(baseGroups = c("Esri Satellite Map",
                                       "Open Topo Map",
                                       "Carto"))
@@ -328,8 +335,8 @@ server <- function(input, output, session) {
       summarise(n = n()) %>% 
       ungroup() %>% 
       spread(DO_status, n, fill = 0) %>% 
-      rename(over = "1",
-             under = "0")
+      rename(over = "Above limit",
+             under = "Below limit")
     
     plot_ly(n2,
             x = ~as.factor(month),
@@ -345,17 +352,22 @@ server <- function(input, output, session) {
   output$avgdoplot <- renderPlotly({
     wdi <- md2 %>%
       group_by(MLocID, month.p = floor_date(datetime, "month")) %>% 
+      filter(Site %in% input$SiteCheckGroup) %>% 
       mutate(min = min(do))
     
     plot_ly(wdi, x = ~month.p, y = ~min,
-            text = ~paste('Site:', StationDes)) %>%
-      add_markers(color = ~Site,
-                  colors = coul,
-                  size = 3,
-                  alpha = 0.8) %>% 
-      layout(xaxis = list(title = "Date",
+            text = ~paste('Site:', StationDes),
+            color = ~Site,
+            colors = coul,
+            marker = list(size = 10,
+                          line = list(color = "#000000",
+                                      width = 0.6),
+                          alpha = 0.8)) %>%
+      layout(showlegend = FALSE,
+             xaxis = list(title = "Date",
                           range = c("2007-01-01", "2016-12-31")),
-             yaxis = list(title = "Minimum Dissolved Oxygen"))
+             yaxis = list(title = "Minimum Dissolved Oxygen"),
+             autosize = FALSE, width = 1000, height = 800)
   })
   
   output$summaryboxplot <- renderPlotly({
@@ -400,17 +412,20 @@ server <- function(input, output, session) {
   
   # Main Tab 3 Items --------------------------------------------------------
   
-  output$tab2text <- renderUI({
-    str1 <- paste("You have selected", input$station_selection)
-    str2 <- paste("The elevation at this site is")
-    
-    HTML(paste(str1, str2, sep = '<br/>'))
-    
-  })
+  # output$tab2text <- renderUI({
+  #   str1 <- paste("You have selected", input$station_selection)
+  #   str2 <- paste("The elevation at this site is")
+  #   
+  #   HTML(paste(str1, str2, sep = '<br/>'))
+  #   
+  # })
   
   stations_subset <- reactive({
     req(input$station_selection)
-    filter(md2, Site %in% input$station_selection)
+    b <- md2 %>% filter(Site %in% input$station_selection) 
+    # %>% 
+    #   filter(mdy(datetime) > mdy(input$daterange2[1]) & mdy(datetime) < mdy(input$daterange2[2]))
+      b
   })
   
   output$subsetscatter <- renderPlotly({
@@ -435,23 +450,37 @@ server <- function(input, output, session) {
 # Subplot -----------------------------------------------------------------
 
   output$subplot <- renderPlotly({
-    
+    DO_pal <- c("#000000", "#325C62", "#F4A767")
+    DO_pal <- setNames(DO_pal, c("do", "Above limit", "Below limit"))
+
     a <- plot_ly(data = stations_subset(),
-            x = ~get(input$x),
-            y = ~do,
-            type = "scatter",
-            source = "A") %>% 
-      add_markers(color = ~DO_status)
+                 x = ~get(input$x),
+                 y = ~do,
+                 colors = DO_pal,
+                 type = "scatter",
+                 source = "A",
+                 showlegend = FALSE) %>% 
+      add_markers(color = ~DO_status,
+                  colors = DO_pal,
+                  showlegend = TRUE)
     b <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
                  y = ~get(input$y2),
+                 name = input$y2,
+                 marker = list(color = "#3C3545"),
                  type = "scatter")
     c <- plot_ly(data = stations_subset(),
-                 x = ~get(input$x), y = ~get(input$y3),
+                 x = ~get(input$x),
+                 y = ~get(input$y3),
+                 name = input$y3,
+                 marker = list(color = "#49805F"),
                  type = "scatter")
     d <- plot_ly(data = stations_subset(),
-              x = ~get(input$x), y = ~get(input$y4),
-              type = "scatter")
+                 x = ~get(input$x), 
+                 y = ~get(input$y4),
+                 name = input$y4,
+                 marker = list(color = "#959B4F"),
+                 type = "scatter")
     sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE)
     sp %>% 
       layout(autosize = FALSE, width = 1000, height = 800)
