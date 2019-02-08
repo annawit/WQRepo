@@ -4,15 +4,19 @@ library(lubridate)
 
 #original data, called dta2
 load("ShinyAllData.Rdata")
+
 # stations list with geodata from Lesley Merrick
 stations <- read_csv("TEP_StationsInfo_anna.csv")
+
 # the DO lookup table, from Travis Pritchard
 DO_lvls <- read_csv("DO_crit.csv")
+
 # spawning dates, also from Lesley Merrick.
 # dates may come in in weird format
 spn <- read_csv("IRDatabase_CriteriaTables.csv")
 
 #removes stations without a lasar id, might have to be remedied later
+#refers specifically to two TEP sampling sites
 dta3 <- dta2 %>% 
   filter(!is.na(lasar_id))
 
@@ -79,22 +83,30 @@ summary(as.factor(dtasp$DO_status))
 names(dtasp)
 names(dta1)
 
+sites <- dtasp %>%
+  group_by(MLocID, StationDes, Lat_DD, Long_DD, LLID, RiverMile, Spawn_dates) %>% 
+  count()
+
+#removes columns we don't need in the continuous data
 dtasp1 <- dtasp %>% 
   filter(!is.na(DO_status)) %>% 
-  select(-c(lasar_id, CollMethod, MonLocType, AU_ID, STATE, Reachcode, Measure, LLID, ReachRes,
-            crit_30D, crit_7Mi, crit_Min, Spawn_dates, Created_Date, UserName, EcoRegion2,
-            OWRD_Basin, UseNHD_LL, FishCode, SpawnCode, WaterTypeCode, WaterBodyCode,
-            BacteriaCode, DO_code, ben_use_code, pH_code, DO_SpawnCode, QC_Comm,
-            Conf_Score, SnapDist_ft, SnapDate, HUC10, HUC8, HUC4_Name, HUC6_Name,
-            HUC12, EcoRegion3, T_R_S, Comments)) %>% 
+  select(-c(lasar_id, data_source, Datum, CollMethod, MapScale, AU_ID, MonLocType,
+            Comments, STATE, COUNTY, T_R_S, EcoRegion3, EcoRegion4, HUC4_Name,
+            HUC6_Name, HUC8_Name, HUC10_Name, HUC12_Name, HUC8, HUC10, HUC12,
+            ELEV_Ft, GNIS_Name, Reachcode, Measure, SnapDate, ReachRes,
+            SnapDist_ft, Conf_Score, QC_Comm, UseNHD_LL,FishCode, SpawnCode,
+            WaterTypeCode,WaterBodyCode,BacteriaCode, DO_code, ben_use_code,
+            pH_code, DO_SpawnCode, OWRD_Basin, TimeZone, EcoRegion2, UserName,
+            Created_Date, crit_30D, crit_7Mi, crit_Min)) %>% 
   select(MLocID, StationDes, everything())
 
-
+#filters NAs, creates identifier "Site"
 dta1 <- dtasp1 %>%
   filter(!is.na(datetime)) %>% 
   mutate(Site = paste(MLocID, StationDes))
 
 save(dta1, file = "dataforwqapp.RData")
+save(sites, file = "sitesummary.RData")
 
 # ddd <- dtasp %>% 
 #   group_by(month = floor_date(datetime, "month")) %>% 
