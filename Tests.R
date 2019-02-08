@@ -446,14 +446,14 @@ p <- plot_ly(n2,
 
 p
 
-# Animals <- c("giraffes", "orangutans", "monkeys")
-# SF_Zoo <- c(20, 14, 23)
-# LA_Zoo <- c(12, 18, 29)
-# data <- data.frame(Animals, SF_Zoo, LA_Zoo)
+Animals <- c("giraffes", "orangutans", "monkeys")
+SF_Zoo <- c(20, 14, 23)
+LA_Zoo <- c(12, 18, 29)
+data <- data.frame(Animals, SF_Zoo, LA_Zoo)
 
-# p <- plot_ly(data, x = ~Animals, y = ~SF_Zoo, type = 'bar', name = 'SF Zoo') %>%
-#   add_trace(y = ~LA_Zoo, name = 'LA Zoo') %>%
-#   layout(yaxis = list(title = 'Count'), barmode = 'stack')
+p <- plot_ly(data, x = ~Animals, y = ~SF_Zoo, type = 'bar', name = 'SF Zoo') %>%
+  add_trace(y = ~LA_Zoo, name = 'LA Zoo') %>%
+  layout(yaxis = list(title = 'Count'), barmode = 'stack')
 
 # https://stackoverflow.com/questions/25811756/summarizing-counts-of-a-factor-with-dplyr
 # df = tbl_df(data.frame(owner=c(0,0,1,1), obs1=c("quiet", "loud", "quiet", "loud"), obs2=c("loud", "loud", "quiet", "quiet")))
@@ -476,3 +476,194 @@ p
 #   gather(observation, Val, obs1:obs2)
 
 p
+
+
+# 2/7/2019 ----------------------------------------------------------------
+
+library(shiny)
+library(leaflet)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(plotly)
+library(lubridate)
+library(shinyWidgets)
+library(shinythemes)
+library(viridis)
+library(RColorBrewer)
+
+load("dataforwqapp.Rdata")
+
+md2 <- dta1
+
+load("sitesummary.Rdata")
+sd <- sites
+
+#colors
+coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
+
+
+tt <- md2 %>% 
+  filter(grepl("13428", MLocID))
+
+cls <- c("red", "blue")
+
+a <- plot_ly(tt,
+             x = ~datetime,
+             y = ~do,
+             color = ~DO_status,
+             colors = cls,
+             name = c("below", "above"),
+             type = "scatter",
+             source = "A")
+# %>% 
+#   add_markers(color = ~DO_status,
+#               name = c("DO status", "B"),
+#               colors = c("blue", "red"))
+
+a
+
+
+
+b <- plot_ly(tt,
+             x = ~datetime,
+             y = ~do,
+             name = "DO",
+             type = "scatter") %>% 
+  add_markers(color = ~as.factor(DO_status),
+              colors = cls,
+              name = c("A", "B"))
+b
+# b <- plot_ly(data = stations_subset(),
+#              x = ~get(input$x),
+#              y = ~get(input$y2),
+#              type = "scatter")
+# c <- plot_ly(data = stations_subset(),
+#              x = ~get(input$x), y = ~get(input$y3),
+#              type = "scatter")
+# d <- plot_ly(data = stations_subset(),
+#              x = ~get(input$x), y = ~get(input$y4),
+#              type = "scatter")
+# sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+# sp %>% 
+#   layout(autosize = FALSE, width = 1000, height = 800)
+
+
+
+tt <- md2 %>% 
+  filter(grepl("13428", MLocID)) %>%
+  mutate(DO_status = ifelse(DO_status == 0, "Below limit", "Above limit"))
+
+summary(as.factor(tt$DO_status))
+
+a <- plot_ly(data = tt,
+             x = ~datetime,
+             y = ~do,
+             colors = DO_s_cols,
+             name = "DO",
+             type = "scatter",
+             source = "A") %>% 
+  add_markers(color = ~DO_status,
+              colors = DO_s_cols,
+              name = ~DO_status)
+b <- plot_ly(data = tt,
+               x = ~datetime,
+               y = ~temp,
+             colors = DO_s_cols,
+               type = "scatter")
+c <- plot_ly(data = tt,
+             x = ~datetime, y = ~cond,
+             colors = DO_s_cols,
+             type = "scatter")
+d <- plot_ly(data = tt,
+             x = ~datetime, y = ~ph,
+             colors = DO_s_cols,
+             type = "scatter")
+sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+
+sp
+
+DO_s_cols <- c("#003f5c", "#58508d", "#ff6361", "#bc5090", "#ffa600")
+
+#003f5c
+#58508d
+#bc5090
+#ff6361
+#ffa600
+
+b <- plot_ly(data = stations_subset(),
+             x = ~get(input$x),
+             y = ~get(input$y2),
+             type = "scatter")
+c <- plot_ly(data = stations_subset(),
+             x = ~get(input$x), y = ~get(input$y3),
+             type = "scatter")
+d <- plot_ly(data = stations_subset(),
+             x = ~get(input$x), y = ~get(input$y4),
+             type = "scatter")
+sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+sp %>% 
+  layout(autosize = FALSE, width = 1000, height = 800)
+
+#F4A767,#959B4F,#49805F,#325C62,#3C3545
+#B99941,#829241,#51854F,#2A745C,#1C6161,#294C5B
+DO_pal <- c("#000000", "#325C62", "#F4A767")
+DO_pal <- setNames(DO_pal, c("do", "Above limit", "Below limit"))
+
+tt2 <- md2 %>% 
+  filter(grepl("13428", MLocID)) %>% 
+  mutate(DO_status = ifelse(DO_status == 0, "Below limit", "Above limit"))
+
+a <- plot_ly(data = tt2,
+             x = ~datetime,
+             y = ~do,
+             colors = DO_pal,
+             type = "scatter",
+             source = "A",
+             showlegend = FALSE) %>%
+  add_markers(color = ~DO_status,
+              colors = DO_pal,
+              showlegend = TRUE)
+a
+b <- plot_ly(data = tt2,
+             x = ~datetime,
+             y = ~temp,
+             name = "Temp",
+             marker = list(color = "#3C3545"),
+             type = "scatter")
+c <- plot_ly(data = tt2,
+             x = ~datetime, y = ~cond,
+             marker = list(color = "#49805F"),
+             type = "scatter")
+d <- plot_ly(data = tt2,
+             x = ~datetime, y = ~ph,
+             marker = list(color = "#959B4F"),
+             type = "scatter")
+sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+
+sp
+
+load("dataforwqapp.Rdata")
+
+md2 <- dta1
+
+load("sitesummary.Rdata")
+sd <- sites
+
+coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
+wdi <- md2 %>%
+  group_by(MLocID, month.p = floor_date(datetime, "month")) %>% 
+  mutate(min = min(do))
+
+plot_ly(wdi, x = ~month.p, y = ~min,
+        text = ~paste('Site:', StationDes),
+        color = ~Site,
+        colors = coul,
+        marker = list(size = 10,
+                      line = list(color = "#000000",
+                                  width = 0.6),
+                      alpha = 0.8)) %>%
+  layout(xaxis = list(title = "Date",
+                      range = c("2007-01-01", "2016-12-31")),
+         yaxis = list(title = "Minimum Dissolved Oxygen"),
+         autosize = FALSE, width = 1000, height = 800)
