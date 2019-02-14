@@ -431,7 +431,7 @@ n <- md2 %>%
   #                        levels = c("May", "Jun", "Jul", "Aug", "Oct")))
 
 n2 <- n %>%
-  group_by(MLocID, month, DO_status) %>% 
+  group_by(MLocID, StationDes, month, DO_status) %>% 
   summarise(n = n()) %>% 
   ungroup() %>% 
   spread(DO_status, n, fill = 0) %>% 
@@ -440,11 +440,52 @@ n2 <- n %>%
   
 p <- plot_ly(n2,
              x = ~as.factor(month),
-             y = ~under, type = 'bar', name = 'Under Limit') %>%
+             y = ~under,
+             type = 'bar', 
+             name = 'Under Limit') %>%
   add_trace(y = ~over, name = 'Over Limit') %>%
   layout(yaxis = list(title = 'Count'), barmode = 'stack')
 
 p
+
+n2
+
+sitecount <- plot_ly(n2,
+             x = ~MLocID,
+             y = ~under, 
+             type = 'bar',
+             text = ~StationDes,
+             hoverinfo = "text",
+             hovertext = paste("Station:", n2$StationDes,
+                               "<br> Date: ", n2$month),
+             name = 'Under Limit') %>%
+  add_trace(y = ~over, name = 'Over Limit') %>%
+  layout(yaxis = list(title = 'Count'), barmode = 'stack')
+
+sitecount
+
+
+sitecount2 <- plot_ly(n2,
+                      x = ~MLocID,
+                      text = ~StationDes,
+                      hoverinfo = "text",
+                      hovertext = paste("Station:", n2$StationDes,
+                                        "<br> Date: ", n2$month)) %>% 
+  add_trace(
+    y = ~under, 
+    type = 'bar',
+    marker = list(color = 'rgb((204,204,204))'),
+    name = 'Under Limit') %>%
+  add_trace(
+    y = ~over,
+    type = "bar",
+    marker = list(color = 'rgb(49,130,189)'),
+    name = 'Over Limit') %>%
+  layout(yaxis = list(title = 'Count'), barmode = 'stack')
+
+sitecount2
+
+
 
 Animals <- c("giraffes", "orangutans", "monkeys")
 SF_Zoo <- c(20, 14, 23)
@@ -667,3 +708,67 @@ plot_ly(wdi, x = ~month.p, y = ~min,
                       range = c("2007-01-01", "2016-12-31")),
          yaxis = list(title = "Minimum Dissolved Oxygen"),
          autosize = FALSE, width = 1000, height = 800)
+
+
+wdi <- md2 %>%
+  select(MLocID, datetime, do, Site) %>% 
+  group_by(MLocID, month.p = floor_date(datetime, "month")) %>% 
+  mutate(min = min(do))
+
+wdi <- md2 %>%
+  select(MLocID, datetime, do, Site) %>% 
+  group_by(MLocID, month.p = floor_date(datetime, "month")) %>% 
+  summarize(min = min(do))
+
+# wdi_d <- md2 %>%
+#   select(MLocID, datetime, do, Site, StationDes, DO_status) %>% 
+#   group_by(MLocID, Site, StationDes, DO_status, month.p = floor_date(datetime, "month")) %>% 
+#   summarize(min = min(do))
+
+  
+  plot_ly(wdi_d, x = ~month.p, y = ~min,
+          text = ~paste('Site:', StationDes),
+          color = ~Site,
+          colors = viridis_pal(option = "D")(14),
+          # colors = coul,
+          mode = "markers",
+          type = "scatter",
+          marker = list(size = 10,
+                        line = list(color = "#000000",
+                                    width = 0.2),
+                        alpha = 0.8)) %>%
+    layout(showlegend = FALSE,
+           xaxis = list(title = "Date",
+                        range = c("2007-01-01", "2016-12-31")),
+           yaxis = list(title = "Minimum Dissolved Oxygen")
+           # ,
+           # autosize = FALSE, width = 1000, height = 800
+    )
+
+
+
+# icons -------------------------------------------------------------------
+# https://rstudio.github.io/leaflet/markers.html
+
+df.20 <- quakes[1:20,]
+
+getColor <- function(quakes) {
+  sapply(quakes$mag, function(mag) {
+    if(mag <= 4) {
+      "green"
+    } else if(mag <= 5) {
+      "orange"
+    } else {
+      "red"
+    } })
+}
+
+icons <- awesomeIcons(
+  icon = 'ios-close',
+  iconColor = 'black',
+  library = 'ion',
+  markerColor = getColor(df.20)
+)
+
+leaflet(df.20) %>% addTiles() %>%
+  addAwesomeMarkers(~long, ~lat, icon=icons, label=~as.character(mag))
