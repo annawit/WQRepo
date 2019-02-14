@@ -10,6 +10,7 @@ library(shinythemes)
 library(viridis)
 library(RColorBrewer)
 
+
 # Data -------------------------------------------------------
 
 
@@ -35,7 +36,7 @@ ui <- fluidPage(
              sidebarLayout(position = "right",
                            sidebarPanel(
                              wellPanel(
-                               textOutput("temp"),
+                               textOutput("youhavechosen"),
                                hr(),
                                plotlyOutput("mininplot")),
                              wellPanel(
@@ -77,20 +78,28 @@ ui <- fluidPage(
                                                     "All under DO limit",
                                                     "Stacked")
                             )),
-                          mainPanel(plotlyOutput("nplot"),
-                                    plotlyOutput("nstackplot"))
+                          mainPanel(
+                            h4("Menu to the left isn't associated with anything yet."),
+                            h4("Eventually, the user will be able to choose between different plots."),
+                            h4("It's possible this could be combined with the boxplot tab."),
+                            plotlyOutput("nplot"),
+                            plotlyOutput("nstackplot"),
+                            plotlyOutput("sitecount2"))
                         )
                ),
                # Subpanel DO at each site ----------------
                tabPanel("DO at each site",
                         sidebarLayout(
                           sidebarPanel(position = "right",
-                            checkboxGroupInput("SiteCheckGroup", 
-                                               label = h3("Sites"), 
-                                               choices = unique(md2$Site),
-                                               selected = unique(md2$Site))
+                                       checkboxGroupInput("SiteCheckGroup", 
+                                                          label = h3("Sites"), 
+                                                          choices = unique(md2$Site),
+                                                          selected = unique(md2$Site))
                           ),
                           mainPanel(
+                            h4("I like this plot but it takes forever to load."),
+                            h4("If this isn't a useful way to look at the data, we could consider something else."),
+                            h4("There's no legend because you can hover for the site info."),
                             plotlyOutput("avgdoplot")
                           )
                         )
@@ -98,7 +107,7 @@ ui <- fluidPage(
                
                # Subpanel boxplots ------------------------------------------------------------
                
-               tabPanel("Other overview visualizations",
+               tabPanel("Boxplots",
                         plotlyOutput("summaryboxplot"),
                         plotlyOutput("summaryboxplot2"),
                         plotlyOutput("summaryboxplot3"))
@@ -156,11 +165,13 @@ ui <- fluidPage(
                      # )
                    ),
                    mainPanel(
-                     plotlyOutput("subplot"),
-                     verbatimTextOutput("brush")
-                   )),
-          tabPanel("Data Selected From Graph, in a Table",
-                   DT::dataTableOutput("graph_to_table"))
+                     plotlyOutput("subplot")
+                     # ,
+                     # verbatimTextOutput("brush")
+                   ))
+          # ,
+          # tabPanel("Data Selected From Graph, in a Table",
+          #          DT::dataTableOutput("graph_to_table"))
         )
       )
     ),
@@ -171,22 +182,23 @@ ui <- fluidPage(
              fluidPage(
                sidebarLayout(
                  sidebarPanel(
-                   selectizeInput(
-                     inputId = "station_pf",
-                     label = "Select station(s):",
-                     choices = levels(md2$MLocID),
-                     multiple = TRUE
-                   ),
+                   # selectizeInput(
+                   #   inputId = "station_pf",
+                   #   label = "Select station(s):",
+                   #   choices = md2$Site,
+                   #   multiple = TRUE
+                   # ),
                    radioButtons(
                      inputId = "DOPassFailRadio",
                      label = "Select:",
-                     choices = c("Pass", "Fail", "All"),
+                     choices = c("Over limit" = 1, "Under limit" = 0),
                      selected = "All"
                    )
                  ),
                  mainPanel(
                    tabsetPanel(
-                     tabPanel("Map"),
+                     tabPanel("Map",
+                              leafletOutput("DOmap")),
                      tabPanel("Table")
                    )
                  )
@@ -218,7 +230,7 @@ server <- function(input, output, session) {
                                       "Carto"))
   })
   
-  output$temp <- renderPrint({
+  output$youhavechosen <- renderPrint({
     req(input$map_marker_click$id)
     cat("The station you have chosen is: ", input$map_marker_click$id)
   })
@@ -268,6 +280,14 @@ server <- function(input, output, session) {
       DT::formatDate("datetime", "toLocaleString")
   })
 
+ # mapclickmd2 <-  reactive({
+ #    md2 %>% 
+ #      filter(MLocID == input$map_marker_click$id) %>% 
+ #      group_by(month = floor_date(datetime, "month")) %>% 
+ #      mutate(n_samples = n()) %>% 
+ #      mutate(season = factor(month.abb[month(datetime)],
+ #                             levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+ #  })
 
 ## mini nplot --------------------------------------------------------------
 
@@ -306,11 +326,7 @@ server <- function(input, output, session) {
   
 # nplot ------------------------------------------------------
   output$nplot <- renderPlotly({
-    # md2 %>% 
-    #   group_by(month = floor_date(datetime, "month")) %>% 
-    #   mutate(n_samples = n()) %>% 
-    #   mutate(season = factor(month.abb[month(datetime)],
-    #                          levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+    
       plot_ly(n_sum(),
               x = ~as.factor(month),
               y = ~n_samples,
@@ -328,74 +344,128 @@ server <- function(input, output, session) {
   })
 
 # stacked do count --------------------------------------------------------
-
+n2 <- reactive({
+n_sum() %>%
+    group_by(MLocID, month, DO_status) %>% 
+    summarise(n = n()) %>% 
+    ungroup() %>% 
+    spread(DO_status, n, fill = 0) %>% 
+    rename(over = "Above limit",
+           under = "Below limit")
+}
+)
+  
+  
   output$nstackplot <- renderPlotly({
-    n2 <- n_sum() %>%
-      group_by(MLocID, month, DO_status) %>% 
-      summarise(n = n()) %>% 
-      ungroup() %>% 
-      spread(DO_status, n, fill = 0) %>% 
-      rename(over = "Above limit",
-             under = "Below limit")
-    
-    plot_ly(n2,
-            x = ~as.factor(month),
+
+    plot_ly(n2(),
+            x = ~as.factor(month)) %>% 
+      add_trace(
             y = ~under,
-            type = 'bar', name = 'Under Limit') %>%
-      add_trace(y = ~over, name = 'Over Limit') %>%
+            name = 'Under Limit',
+            marker = list(color = 'rgb((204,204,204))'),
+            type = 'bar') %>%
+      add_trace(y = ~over,
+                name = 'Over Limit',
+                marker = list(color = 'rgb(49,130,189)'),
+                type = 'bar') %>%
       layout(yaxis = list(title = 'Count'), barmode = 'stack')
   
   })
+  
+  
+ output$sitecount2 <- renderPlotly({
+   n2 <- n_sum() %>%
+     group_by(StationDes, MLocID, month, DO_status) %>% 
+     summarise(n = n()) %>% 
+     ungroup() %>% 
+     spread(DO_status, n, fill = 0) %>% 
+     rename(over = "Above limit",
+            under = "Below limit")
+   
+    plot_ly(n2,
+            x = ~MLocID,
+            text = ~StationDes,
+            hoverinfo = "text",
+            hovertext = paste("Station:", n2$StationDes,
+                              "<br> Date: ", n2$month)) %>% 
+      add_trace(
+        y = ~under, 
+        type = 'bar',
+        marker = list(color = 'rgb((204,204,204))'),
+        name = 'Under Limit') %>%
+      add_trace(
+        y = ~over,
+        type = "bar",
+        marker = list(color = 'rgb(49,130,189)'),
+        name = 'Over Limit') %>%
+      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+  })
+  
+  
+  
 # do summary plot ---------------------------------------------------------
+
+ wdi <- reactive({
+   md2 %>%
+     select(MLocID, datetime, do, Site, StationDes) %>% 
+     group_by(MLocID, Site, StationDes, month.p = floor_date(datetime, "month")) %>% 
+     filter(Site %in% input$SiteCheckGroup) %>% 
+     summarize(min = min(do))
+ })
 
   
   output$avgdoplot <- renderPlotly({
-    wdi <- md2 %>%
-      group_by(MLocID, month.p = floor_date(datetime, "month")) %>% 
-      filter(Site %in% input$SiteCheckGroup) %>% 
-      mutate(min = min(do))
-    
-    plot_ly(wdi, x = ~month.p, y = ~min,
+
+    plot_ly(wdi(), x = ~month.p, y = ~min,
             text = ~paste('Site:', StationDes),
             color = ~Site,
-            colors = coul,
+            colors = viridis_pal(option = "D")(14),
+            # colors = coul,
+            mode = "markers",
+            type = "scatter",
             marker = list(size = 10,
                           line = list(color = "#000000",
-                                      width = 0.6),
+                                      width = 0.2),
                           alpha = 0.8)) %>%
       layout(showlegend = FALSE,
              xaxis = list(title = "Date",
                           range = c("2007-01-01", "2016-12-31")),
-             yaxis = list(title = "Minimum Dissolved Oxygen"),
-             autosize = FALSE, width = 1000, height = 800)
+             yaxis = list(title = "Minimum Dissolved Oxygen")
+             # ,
+             # autosize = FALSE, width = 1000, height = 800
+             )
+  })
+  
+boxplotdata <-  reactive({
+md2 %>% 
+      mutate(month = floor_date(datetime, "month")) %>%
+      mutate(season = factor(month.abb[month(datetime)],
+                             levels = c("May", "Jun", "Jul", "Aug", "Oct")))
   })
   
   output$summaryboxplot <- renderPlotly({
-    boxplotData <- md2 %>% 
-      mutate(month = floor_date(datetime, "month")) %>%
-      mutate(season = factor(month.abb[month(datetime)], levels = c("May", "Jun", "Jul", "Aug", "Oct")))
     
-    plot_ly(boxplotData,
+    plot_ly(boxplotdata(),
             x = ~as.factor(MLocID),
             y = ~do,
             color = ~season,
             # colors = viridis_pal(option = "D")(5), 
             type = "box",
-            text = ~paste('Site: ', StationDes)) %>%
+            text = ~paste('Site: ', StationDes,
+                          "<br>", DO_lim)) %>%
       layout(boxmode = "group")
   })
   
   output$summaryboxplot2 <- renderPlotly({
-    boxplotData <- md2 %>% 
-      mutate(month = floor_date(datetime, "month")) %>%
-      mutate(season = factor(month.abb[month(datetime)],
-                             levels = c("May", "Jun", "Jul", "Aug", "Oct")))
-    plot_ly(boxplotData,
+
+    plot_ly(boxplotdata(),
             x = ~season,
             y = ~do,
             color = ~MLocID, 
             colors = viridis_pal(option = "D")(5), type = "box",
-            text = ~paste('Site: ', StationDes)) %>%
+            text = ~paste('Site: ', StationDes,
+                          "<br>", DO_lim)) %>%
       layout(boxmode = "group")
   })
   
@@ -405,7 +475,8 @@ server <- function(input, output, session) {
     # mutate(season = factor(month.abb[month(datetime)], levels=c("May", "Jun", "Jul", "Aug", "Oct")))
     plot_ly(boxplotData, x = ~year, y = ~do, color = ~MLocID, 
             colors = viridis_pal(option = "D")(5), type = "box",
-            text = ~paste('Site: ', StationDes)) %>%
+            text = ~paste('Site: ', StationDes,
+                          "<br>", DO_lim)) %>%
       layout(boxmode = "group")
   })
   
@@ -506,22 +577,33 @@ server <- function(input, output, session) {
 
 # DO map ------------------------------------------------------------------
 
+userdomd2 <- reactive({
+    md2 
+  # %>% 
+  #     filter(DO_status %in% input$DOPassFailRadio)
+  })
+  
+  
+  
+  
   output$DOmap <- renderLeaflet({
     leaflet() %>%
       addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
       addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
       addProviderTiles("CartoDB", group = "Carto") %>%
-      addMarkers(data = md2,
+      addMarkers(data = userdomd2(),
                  lat = ~Lat_DD,
                  lng = ~Long_DD,
                  label = ~paste0("Station ID: ", MLocID, "
                                  Site Name: ", StationDes),
                  labelOptions = labelOptions(textOnly = FALSE),
-                 layerId = md2$MLocID) %>%
+                 clusterOptions = markerClusterOptions(),
+                 layerId = userdomd2()$do) %>%
       addLayersControl(baseGroups = c("Esri Satellite Map",
                                       "Open Topo Map",
                                       "Carto"))
-  })  
+  })
+  
   } #End Server
 
 shinyApp(ui = ui, server = server)
