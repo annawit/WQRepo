@@ -9,6 +9,7 @@ library(shinyWidgets)
 library(shinythemes)
 library(viridis)
 library(RColorBrewer)
+library(rgdal)
 
 
 # Data -------------------------------------------------------
@@ -17,7 +18,7 @@ library(RColorBrewer)
 load("dataforwqapp.Rdata")
 
 md2 <- dta1 %>% 
-  mutate(DO_status = ifelse(DO_status == 0, "Below limit", "Above limit"))
+  mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria"))
 
 load("sitesummary.Rdata")
 sd <- sites
@@ -28,6 +29,7 @@ coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+  theme = shinythemes::shinytheme("flatly"),
   navbarPage(
     "Continuous Dissolved Oxygen Visualizer",
     
@@ -74,8 +76,8 @@ ui <- fluidPage(
                             selectInput(inputId = "plottype",
                                         "Select:", 
                                         choices = c("All data" = "nplot",
-                                                    "All over DO limit",
-                                                    "All under DO limit",
+                                                    "Meets criteria only",
+                                                    "Excursion only",
                                                     "Stacked")
                             )),
                           mainPanel(
@@ -87,19 +89,17 @@ ui <- fluidPage(
                             plotlyOutput("sitecount2"))
                         )
                ),
-               # Subpanel DO at each site ----------------
+               # Sub DO at each site ----------------
                tabPanel("DO at each site",
                         sidebarLayout(
                           sidebarPanel(position = "right",
                                        checkboxGroupInput("SiteCheckGroup", 
                                                           label = h3("Sites"), 
                                                           choices = unique(md2$Site),
-                                                          selected = unique(md2$Site))
+                                                          selected = max(unique(md2$Site)))
                           ),
                           mainPanel(
-                            h4("I like this plot but it takes forever to load."),
-                            h4("If this isn't a useful way to look at the data, we could consider something else."),
-                            h4("There's no legend because you can hover for the site info."),
+                            h4("Minimum DO at a given site for a given sampling event."),
                             plotlyOutput("avgdoplot")
                           )
                         )
@@ -108,10 +108,22 @@ ui <- fluidPage(
                # Subpanel boxplots ------------------------------------------------------------
                
                tabPanel("Boxplots",
-                        plotlyOutput("summaryboxplot"),
-                        plotlyOutput("summaryboxplot2"),
-                        plotlyOutput("summaryboxplot3"))
-             )),
+                        sidebarLayout(
+                          sidebarPanel(
+                            width = 3,
+                            selectInput("boxploty",
+                                        "Select boxplot to display:",
+                                        choices = c("By station", "By season", "By month"))
+                          ),
+                          mainPanel(
+                            width = 9,
+                            plotlyOutput("summaryboxplot"),
+                            plotlyOutput("summaryboxplot2"),
+                            plotlyOutput("summaryboxplot3")
+                          )
+                        )
+             ))
+             ),
     
     # Search by Station --------------------------------------------------------------
     
@@ -121,6 +133,7 @@ ui <- fluidPage(
         tabsetPanel(
           tabPanel("Plots",
                    sidebarPanel(
+                     width = 3,
                      selectInput(
                        inputId = "station_selection",
                        label = "Select station:",
@@ -132,12 +145,6 @@ ui <- fluidPage(
                        choices = names(md2),
                        selected = "datetime"
                      ),
-                     # selectInput(
-                     #   inputId = "y",
-                     #   label = "y-axis",
-                     #   choices = names(md2),
-                     #   selected = "do"
-                     # ),
                      selectInput(
                        inputId = "y2",
                        label = "2nd y-axis",
@@ -165,20 +172,31 @@ ui <- fluidPage(
                      # )
                    ),
                    mainPanel(
-                     plotlyOutput("subplot")
+                     fluidRow(
+                       column(8,
+                              plotlyOutput("subplot")
+                              
+                       ),
+                       column(4,
+                              plotlyOutput("summaryplot"),
+                              hr(),
+                              DT::dataTableOutput("plot.summ"))
+                     )
+                     
                      # ,
                      # verbatimTextOutput("brush")
-                   ))
+                   )),
           # ,
-          # tabPanel("Data Selected From Graph, in a Table",
-          #          DT::dataTableOutput("graph_to_table"))
+          tabPanel("Data Selected From Graph, in a Table",
+                   verbatimTextOutput("brush"),
+                   DT::dataTableOutput("graph_to_table"))
         )
       )
     ),
     
     # Search by DO --------------------------------------------------------------
     
-    tabPanel("Search by DO over/under limit",
+    tabPanel("Search by DO criteria",
              fluidPage(
                sidebarLayout(
                  sidebarPanel(
@@ -191,7 +209,7 @@ ui <- fluidPage(
                    radioButtons(
                      inputId = "DOPassFailRadio",
                      label = "Select:",
-                     choices = c("Over limit" = 1, "Under limit" = 0),
+                     choices = c("Meets criteria" = 1, "Excursion" = 0),
                      selected = "All"
                    )
                  ),
@@ -350,8 +368,8 @@ n_sum() %>%
     summarise(n = n()) %>% 
     ungroup() %>% 
     spread(DO_status, n, fill = 0) %>% 
-    rename(over = "Above limit",
-           under = "Below limit")
+    rename(over = "Meets criteria",
+           under = "Excursion")
 }
 )
   
@@ -362,11 +380,11 @@ n_sum() %>%
             x = ~as.factor(month)) %>% 
       add_trace(
             y = ~under,
-            name = 'Under Limit',
+            name = 'Excursion',
             marker = list(color = 'rgb((204,204,204))'),
             type = 'bar') %>%
       add_trace(y = ~over,
-                name = 'Over Limit',
+                name = 'Meets criteria',
                 marker = list(color = 'rgb(49,130,189)'),
                 type = 'bar') %>%
       layout(yaxis = list(title = 'Count'), barmode = 'stack')
@@ -380,8 +398,8 @@ n_sum() %>%
      summarise(n = n()) %>% 
      ungroup() %>% 
      spread(DO_status, n, fill = 0) %>% 
-     rename(over = "Above limit",
-            under = "Below limit")
+     rename(over = "Meets criteria",
+            under = "Excursion")
    
     plot_ly(n2,
             x = ~MLocID,
@@ -393,12 +411,12 @@ n_sum() %>%
         y = ~under, 
         type = 'bar',
         marker = list(color = 'rgb((204,204,204))'),
-        name = 'Under Limit') %>%
+        name = 'Excursion') %>%
       add_trace(
         y = ~over,
         type = "bar",
         marker = list(color = 'rgb(49,130,189)'),
-        name = 'Over Limit') %>%
+        name = 'Meets criteria') %>%
       layout(yaxis = list(title = 'Count'), barmode = 'stack')
   })
   
@@ -436,18 +454,22 @@ n_sum() %>%
              # autosize = FALSE, width = 1000, height = 800
              )
   })
+
+# boxplot -----------------------------------------------------------------
+
   
-boxplotdata <-  reactive({
-md2 %>% 
+  boxplotdata <-  reactive({
+    md2 %>% 
       mutate(month = floor_date(datetime, "month")) %>%
       mutate(season = factor(month.abb[month(datetime)],
-                             levels = c("May", "Jun", "Jul", "Aug", "Oct")))
+                             levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
+      mutate(year = factor(floor_date(datetime, "year")))
   })
   
   output$summaryboxplot <- renderPlotly({
     
     plot_ly(boxplotdata(),
-            x = ~as.factor(MLocID),
+            x = ~factor(MLocID),
             y = ~do,
             color = ~season,
             # colors = viridis_pal(option = "D")(5), 
@@ -470,10 +492,7 @@ md2 %>%
   })
   
   output$summaryboxplot3 <- renderPlotly({
-    boxplotData <- md2 %>% 
-      mutate(year = factor(floor_date(datetime, "year")))
-    # mutate(season = factor(month.abb[month(datetime)], levels=c("May", "Jun", "Jul", "Aug", "Oct")))
-    plot_ly(boxplotData, x = ~year, y = ~do, color = ~MLocID, 
+    plot_ly(boxplotdata(), x = ~year, y = ~do, color = ~MLocID, 
             colors = viridis_pal(option = "D")(5), type = "box",
             text = ~paste('Site: ', StationDes,
                           "<br>", DO_lim)) %>%
@@ -522,7 +541,7 @@ md2 %>%
 
   output$subplot <- renderPlotly({
     DO_pal <- c("#000000", "#325C62", "#F4A767")
-    DO_pal <- setNames(DO_pal, c("do", "Above limit", "Below limit"))
+    DO_pal <- setNames(DO_pal, c("do", "Meets criteria", "Excursion"))
 
     a <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
@@ -560,19 +579,83 @@ md2 %>%
 # graph to table ----------------------------------------------------------
 
   output$brush <- renderPrint({
-    d <- event_data("plotly_selected")
+    d <- event_data("plotly_selected", source = "A")
     if (is.null(d)) "Click and drag events appear here" else d
   })
   
   
   output$graph_to_table <- DT::renderDT({
-    d <- event_data("plotly_selected", source = "A")
-    if (is.null(d)) return(NULL)
-    # else stations_subset() %>% filter(input$x > min(d$x) )
-    else stations_subset() %>%
-      filter(between(input$x, min(d$x), max(d$x)))
+    event.data <- event_data("plotly_selected", source = "A")
+    
+    if (is.null(event.data)) return(NULL)
+
+    Meets_criteria <- subset(stations_subset(),
+                          DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
+    Excursion <- subset(stations_subset(),
+                           DO_status == "Excursion")[subset(event.data,
+                                                     curveNumber == 1)$pointNumber + 1,]
+    
+    plot.subset <- rbind(Meets_criteria, Excursion)
+    
+    plot.subset
+    # plot.summ <- plot.subset %>%
+    #   group_by(do, get(input$x), DO_status) %>%
+    #   summarize(Count = n())
+    # 
+    # plot.summ
     })
 
+  
+  output$summaryplot <- renderPlotly({
+
+    event.data <- event_data("plotly_selected", source = "A")
+    if (is.null(event.data)) return(NULL)
+
+    Meets_criteria <- subset(stations_subset(),
+                             DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
+    Excursion <- subset(stations_subset(),
+                        DO_status == "Excursion")[subset(event.data,
+                                                         curveNumber == 1)$pointNumber + 1,]
+
+    plot.subset <- rbind(Meets_criteria, Excursion)
+
+    plot.summ <- plot.subset %>%
+      group_by(DO_status) %>%
+      summarize(Count = n())
+    
+    plot_ly(plot.summ,
+            x = ~DO_status,
+            y = ~Count,
+            type = "bar",
+            color = ~DO_status,
+            colors =  c("#F4A767", "#325C62")) %>%
+      layout(title = "Count",
+             plot_bgcolor = "#dee5ef"
+             # ,
+             # yaxis = list(domain = c(0, 1))
+             )
+  })
+  
+  output$plot.summ <- DT::renderDT({
+    event.data <- event_data("plotly_selected", source = "A")
+    if (is.null(event.data)) return(NULL)
+    
+    Meets_criteria <- subset(stations_subset(),
+                             DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
+    Excursion <- subset(stations_subset(),
+                        DO_status == "Excursion")[subset(event.data,
+                                                         curveNumber == 1)$pointNumber + 1,]
+    
+    plot.subset <- rbind(Meets_criteria, Excursion)
+    
+    plot.summ <- plot.subset %>%
+      group_by(DO_status) %>%
+      summarize(Count = n())
+    
+    plot.summ 
+  })
+  
+  
   
 
 # DO map ------------------------------------------------------------------
