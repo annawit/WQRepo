@@ -17,8 +17,24 @@ library(rgdal)
 
 load("dataforwqapp.Rdata")
 
+
+
 md2 <- dta1 %>% 
   mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria"))
+
+#gives percent meeting criteria at each site
+e <- md2 %>% 
+  group_by(Site, DO_status) %>% 
+  count() %>% 
+  group_by(Site) %>% 
+  mutate(h = n/sum(n)) %>% 
+  filter(DO_status == "Meets criteria")
+
+e <- data.frame(e)
+plot <- ggplot(data = e, aes(x = Site, y = h, fill = DO_status))+
+  geom_bar(stat = 'identity', position = 'dodge')
+plot
+
 
 load("sitesummary.Rdata")
 sd <- sites
@@ -188,7 +204,7 @@ ui <- fluidPage(
                    )),
           # ,
           tabPanel("Data Selected From Graph, in a Table",
-                   verbatimTextOutput("brush"),
+                   # verbatimTextOutput("brush"),
                    DT::dataTableOutput("graph_to_table"))
         )
       )
@@ -288,16 +304,23 @@ server <- function(input, output, session) {
       filter(MLocID == input$map_marker_click$id)
     DT::datatable(
       data = maptabledata,
-      options = list(pageLength = 10,
+      extensions = 'Buttons',
+      
+      options = list(dom = 'Bfrtip',
+                     pageLength = 10,
                      compact = TRUE,
                      nowrap = TRUE,
-                     scrollX = TRUE),
+                     scrollX = TRUE,
+                     buttons = c('excel', 'csv')
+                     ),
       rownames = FALSE,
       filter = 'bottom'
     ) %>% 
       DT::formatDate("datetime", "toLocaleString")
   })
-
+  
+  
+  
  # mapclickmd2 <-  reactive({
  #    md2 %>% 
  #      filter(MLocID == input$map_marker_click$id) %>% 
@@ -597,14 +620,26 @@ n_sum() %>%
     
     plot.subset <- rbind(Meets_criteria, Excursion)
     
-    plot.subset
-    # plot.summ <- plot.subset %>%
-    #   group_by(do, get(input$x), DO_status) %>%
-    #   summarize(Count = n())
-    # 
-    # plot.summ
-    })
+    DT::datatable(
+      data = plot.subset,
+      extensions = 'Buttons',
+      options = list(dom = 'Bfrtip',
+                     pageLength = 10,
+                     compact = TRUE,
+                     nowrap = TRUE,
+                     scrollX = TRUE,
+                     buttons = c('excel', 'csv', 'pdf')
+                     ),
+      rownames = FALSE,
+      filter = 'top'
+    ) %>% 
+      DT::formatDate("datetime", "toLocaleString")
 
+    })
+  
+  
+  
+  
   
   output$summaryplot <- renderPlotly({
 
@@ -652,9 +687,8 @@ n_sum() %>%
       group_by(DO_status) %>%
       summarize(Count = n())
     
-    plot.summ 
+plot.summ
   })
-  
   
   
 
