@@ -10,6 +10,7 @@ library(shinythemes)
 library(viridis)
 library(RColorBrewer)
 library(rgdal)
+library(tools)
 
 
 # Data -------------------------------------------------------
@@ -24,20 +25,24 @@ md2 <- dta1 %>%
 
 #gives percent meeting criteria at each site
 e <- md2 %>% 
-  group_by(Site, DO_status) %>% 
+  group_by(MLocID, DO_status) %>% 
   count() %>% 
-  group_by(Site) %>% 
-  mutate(h = n/sum(n)) %>% 
+  group_by(MLocID) %>% 
+  mutate(pctmeets = n/sum(n)) %>% 
   filter(DO_status == "Meets criteria")
 
-e <- data.frame(e)
-plot <- ggplot(data = e, aes(x = Site, y = h, fill = DO_status))+
+
+plot <- ggplot(data = e, aes(x = MLocID, y = h, fill = DO_status)) +
   geom_bar(stat = 'identity', position = 'dodge')
 plot
 
 
 load("sitesummary.Rdata")
 sd <- sites
+
+s <- left_join(sd, e, by = "MLocID")
+
+
 
 #colors
 coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
@@ -54,7 +59,7 @@ ui <- fluidPage(
              sidebarLayout(position = "right",
                            sidebarPanel(
                              wellPanel(
-                               textOutput("youhavechosen"),
+                               uiOutput("youhavechosen"),
                                hr(),
                                plotlyOutput("mininplot")),
                              wellPanel(
@@ -76,7 +81,9 @@ ui <- fluidPage(
                              )),
                            mainPanel(
                              wellPanel(leafletOutput("map")),
-                             wellPanel(DT::dataTableOutput("table"))
+                             wellPanel(DT::dataTableOutput("table"),
+                                       br(),
+                                       br())
                            )
                            
              )),
@@ -153,7 +160,8 @@ ui <- fluidPage(
                      selectInput(
                        inputId = "station_selection",
                        label = "Select station:",
-                       choices = md2$Site
+                       choices = md2$Site,
+                       selected = md2$Site[1]
                      ),
                      selectInput(
                        inputId = "x",
@@ -178,22 +186,25 @@ ui <- fluidPage(
                        label = "4th y-axis",
                        choices = names(md2),
                        selected = "ph"
+                     ),
+                     dateRangeInput(inputId = 'daterange',
+                                    label = "Select dates:",
+                                    start = min(md2$datetime),
+                                    end = max(md2$datetime)-1,
+                                    min = min(md2$datetime), max = "2016-12-31",
+                                    separator = " to ", format = "mm/dd/yy",
+                                    startview = 'year', weekstart = 0
                      )
-                     # dateRangeInput(inputId = 'dateRange2',
-                     #                label = "Select dates:",
-                     #                start = min(md2$datetime), end = max(md2$datetime),
-                     #                min = min(md2$datetime), max = max(md2$datetime),
-                     #                separator = " to ", format = "mm/dd/yy",
-                     #                startview = 'year', weekstart = 0
-                     # )
                    ),
                    mainPanel(
                      fluidRow(
                        column(8,
-                              plotlyOutput("subplot")
+                              br(),
+                              plotlyOutput("subplot", height = 800)
                               
                        ),
                        column(4,
+                              hr(),
                               plotlyOutput("summaryplot"),
                               hr(),
                               DT::dataTableOutput("plot.summ"))
@@ -252,7 +263,7 @@ server <- function(input, output, session) {
       addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
       addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
       addProviderTiles("CartoDB", group = "Carto") %>%
-      addMarkers(data = sd,
+      addMarkers(data = s,
                  lat = ~Lat_DD,
                  lng = ~Long_DD,
                  label = ~paste0("Station ID: ", MLocID, "
@@ -264,9 +275,24 @@ server <- function(input, output, session) {
                                       "Carto"))
   })
   
-  output$youhavechosen <- renderPrint({
+  output$youhavechosen <- renderUI({
     req(input$map_marker_click$id)
-    cat("The station you have chosen is: ", input$map_marker_click$id)
+    
+    d <- sd %>% 
+      filter(MLocID == input$map_marker_click$id)
+    
+    HTML(
+         paste("Station details: ", "<br/>",
+               tags$h4(d$StationDes), "<br/>",
+               "MLocID: ", d$MLocID, "<br/>",
+               "Latitude: ", d$Lat_DD, "<br/>",
+               "Longitude: ", d$Long_DD, "<br/>",
+               "LLID: ", d$LLID, "<br/>",
+               "Spawn dates: ", d$Spawn_dates,
+               "Percent of samples meeting criteria: ", d$pctmeets
+               ))
+    
+    
   })
   
   output$download_data <- downloadHandler(
@@ -298,12 +324,13 @@ server <- function(input, output, session) {
   
   output$table <- DT::renderDataTable({
     shiny::validate(need(!is.null(input$map_marker_click$id),
-                         "Click on a station to view data"))
+                         "Click on a station on the map to view data", br()))
     maptabledata <- md2 %>% 
       select(input$checkboxtablesorter) %>% 
       filter(MLocID == input$map_marker_click$id)
     DT::datatable(
       data = maptabledata,
+      style = 'bootstrap',
       extensions = 'Buttons',
       
       options = list(dom = 'Bfrtip',
@@ -523,22 +550,17 @@ n_sum() %>%
   })
   
   
-  # Main Tab 3 Items --------------------------------------------------------
-  
-  # output$tab2text <- renderUI({
-  #   str1 <- paste("You have selected", input$station_selection)
-  #   str2 <- paste("The elevation at this site is")
-  #   
-  #   HTML(paste(str1, str2, sep = '<br/>'))
-  #   
-  # })
+  # Search by Station --------------------------------------------------------
+
   
   stations_subset <- reactive({
     req(input$station_selection)
-    b <- md2 %>% filter(Site %in% input$station_selection) 
+    md2 %>% filter(Site %in% input$station_selection) %>% 
+      select(-c(Lat_DD, Long_DD, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site))
+      # filter(datetime > input$daterange[1] & datetime < input$daterange[2])
     # %>% 
     #   filter(mdy(datetime) > mdy(input$daterange2[1]) & mdy(datetime) < mdy(input$daterange2[2]))
-      b
+    
   })
   
   output$subsetscatter <- renderPlotly({
@@ -575,29 +597,62 @@ n_sum() %>%
                  showlegend = FALSE) %>% 
       add_markers(color = ~DO_status,
                   colors = DO_pal,
-                  showlegend = TRUE)
+                  showlegend = TRUE) %>% 
+      layout(
+        yaxis = list(
+          title = "DO, mg/L"
+        )
+      )
     b <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
                  y = ~get(input$y2),
-                 name = input$y2,
+                 name = toTitleCase(input$y2),
+                 title = toTitleCase(input$y2),
                  marker = list(color = "#3C3545"),
-                 type = "scatter")
+                 type = "scattergl") %>% 
+      layout(
+        yaxis = list(
+          title = toTitleCase(input$y2)
+        )
+      )
     c <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
                  y = ~get(input$y3),
-                 name = input$y3,
+                 name = toTitleCase(input$y3),
+                 title = toTitleCase(input$y3),
                  marker = list(color = "#49805F"),
-                 type = "scatter")
+                 type = "scattergl") %>% 
+      layout(
+        yaxis = list(
+          title = input$y3
+        )
+      )
     d <- plot_ly(data = stations_subset(),
                  x = ~get(input$x), 
                  y = ~get(input$y4),
-                 name = input$y4,
+                 name = toTitleCase(input$y4),
+                 title = toTitleCase(input$y4),
                  marker = list(color = "#959B4F"),
-                 type = "scatter")
-    sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE)
+                 type = "scattergl") %>% 
+      layout(
+        yaxis = list(
+          title = toTitleCase(input$y4)
+        )
+      )
+    sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE, titleY = TRUE)
     sp %>% 
-      layout(autosize = FALSE, width = 1000, height = 800)
-  })
+      layout(
+        # dragmode = "select",
+        xaxis = list(
+          title = toTitleCase(input$x),
+          rangeselector = list()
+          # ,
+          # rangeslider = list(type = "date")
+          )
+        # ,
+        # autosize = FALSE, width = 1000, height = 800
+        )
+  } )
 
 # graph to table ----------------------------------------------------------
 
@@ -622,6 +677,7 @@ n_sum() %>%
     
     DT::datatable(
       data = plot.subset,
+      style = "bootstrap",
       extensions = 'Buttons',
       options = list(dom = 'Bfrtip',
                      pageLength = 10,
