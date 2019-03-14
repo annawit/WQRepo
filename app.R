@@ -23,24 +23,34 @@ load("dataforwqapp.Rdata")
 md2 <- dta1 %>% 
   mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria"))
 
+# sts <- md2 %>% 
+#   group_by(MLocID, DO_status) %>% 
+#   count() %>% 
+#   filter(DO_status == "Excursion")
+
 #gives percent meeting criteria at each site
-e <- md2 %>% 
+meets <- md2 %>% 
   group_by(MLocID, DO_status) %>% 
   count() %>% 
   group_by(MLocID) %>% 
   mutate(pctmeets = n/sum(n)) %>% 
-  filter(DO_status == "Meets criteria")
+  filter(DO_status == "Meets criteria") %>% 
+  mutate(pctbin = cut(pctmeets, c(0, 0.5, 0.99, 1),
+                      include.lowest = TRUE, labels = c("<50", "50-99", ">99")))
 
+pctcolor <- colorFactor(palette = "RdYlGn", meets$pctbin)
 
-plot <- ggplot(data = e, aes(x = MLocID, y = h, fill = DO_status)) +
+plot <- ggplot(data = meets, aes(x = MLocID, y = pctmeets, fill = DO_status)) +
   geom_bar(stat = 'identity', position = 'dodge')
 plot
 
 
+md2
+
 load("sitesummary.Rdata")
 sd <- sites
 
-s <- left_join(sd, e, by = "MLocID")
+s <- left_join(sd, meets, by = "MLocID")
 
 
 
@@ -160,8 +170,7 @@ ui <- fluidPage(
                      selectInput(
                        inputId = "station_selection",
                        label = "Select station:",
-                       choices = md2$Site,
-                       selected = md2$Site[1]
+                       choices = md2$Site
                      ),
                      selectInput(
                        inputId = "x",
@@ -263,11 +272,13 @@ server <- function(input, output, session) {
       addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
       addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
       addProviderTiles("CartoDB", group = "Carto") %>%
-      addMarkers(data = s,
+      addCircleMarkers(data = s,
                  lat = ~Lat_DD,
                  lng = ~Long_DD,
-                 label = ~paste0("Station ID: ", MLocID, "
-                                 Site Name: ", StationDes),
+                 color = ~pctcolor(pctbin),
+                 radius = ~(n.y^(3/9)),
+                 fillOpacity = 0.5,
+                 label = ~paste0("Station ID: ", MLocID, " ", StationDes),
                  labelOptions = labelOptions(textOnly = FALSE),
                  layerId = sd$MLocID) %>%
       addLayersControl(baseGroups = c("Esri Satellite Map",
@@ -278,18 +289,17 @@ server <- function(input, output, session) {
   output$youhavechosen <- renderUI({
     req(input$map_marker_click$id)
     
-    d <- sd %>% 
+    d <- s %>% 
       filter(MLocID == input$map_marker_click$id)
     
     HTML(
-         paste("Station details: ", "<br/>",
-               tags$h4(d$StationDes), "<br/>",
+         paste(tags$h4(d$StationDes),
                "MLocID: ", d$MLocID, "<br/>",
-               "Latitude: ", d$Lat_DD, "<br/>",
-               "Longitude: ", d$Long_DD, "<br/>",
-               "LLID: ", d$LLID, "<br/>",
-               "Spawn dates: ", d$Spawn_dates,
-               "Percent of samples meeting criteria: ", d$pctmeets
+               "Lat/long: ", round(d$Lat_DD, 4), ", ", round(d$Long_DD, 4), "<br/>",
+               "River mile: ", round(d$RiverMile, 2), "<br/>",
+               "Spawn dates: ", d$Spawn_dates, "<br/>",
+               "Number of samples: ", scales::comma(d$n.x), "<br/>",
+               "Percent of all samples meeting criteria: ", round(d$pctmeets*100), "%"
                ))
     
     
@@ -372,7 +382,7 @@ server <- function(input, output, session) {
               y = ~n_samples,
               type = "bar",
               color = ~season,
-              colors = viridis_pal()(3)) %>%
+              colors = viridis_pal()(5)) %>%
       layout(yaxis = list(title = 'Count'),
              xaxis = list(title = "Date",
                           range = c(min(md2$datetime), max(md2$datetime))),
