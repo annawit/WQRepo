@@ -772,3 +772,41 @@ icons <- awesomeIcons(
 
 leaflet(df.20) %>% addTiles() %>%
   addAwesomeMarkers(~long, ~lat, icon=icons, label=~as.character(mag))
+
+
+# 3/14/2019 ---------------------------------------------------------------
+
+
+
+library(shiny)
+library(leaflet)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(plotly)
+library(lubridate)
+library(shinyWidgets)
+library(shinythemes)
+library(viridis)
+library(RColorBrewer)
+
+load("dataforwqapp.Rdata")
+
+md2 <- dta1
+
+load("sitesummary.Rdata")
+sd <- sites
+
+
+summary(md2$do_sat)
+hist(md2$do_sat)
+
+dst <- distinct(md2)
+nd <- md2 %>% 
+  filter(duplicated(md2[1:26]))
+
+btw <- md2 %>% 
+  filter(between(do_sat, left = 140, right = 500))
+
+write.csv(btw, "dosatsample.csv")
+  
