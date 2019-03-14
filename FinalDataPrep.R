@@ -90,7 +90,7 @@ sites <- dtasp %>%
 #removes columns we don't need in the continuous data
 dtasp1 <- dtasp %>% 
   filter(!is.na(DO_status)) %>% 
-  select(-c(lasar_id, data_source, Datum, CollMethod, MapScale, AU_ID, MonLocType,
+  select(-c(lasar_id, Datum, CollMethod, MapScale, AU_ID, MonLocType,
             Comments, STATE, COUNTY, T_R_S, EcoRegion3, EcoRegion4, HUC4_Name,
             HUC6_Name, HUC8_Name, HUC10_Name, HUC12_Name, HUC8, HUC10, HUC12,
             ELEV_Ft, GNIS_Name, Reachcode, Measure, SnapDate, ReachRes,
@@ -113,3 +113,7 @@ save(sites, file = "sitesummary.RData")
 #   mutate(n_samples = n()) %>% 
 #   mutate(season = factor(month.abb[month(datetime)],
 #                          levels = c("May", "Jun", "Jul", "Aug", "Oct")))
+
+
+dta1
+
