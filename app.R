@@ -57,6 +57,11 @@ s <- left_join(sd, meets, by = "MLocID")
 #colors
 coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
 
+color_map <- c("Meets criteria" = "#F4A767", "Excursion" = "#325C62")
+DO_status_levels <- c("Meets criteria", "Excursion")
+DO_status_colors <- c("#F4A767", "#325C62")
+names(DO_status_colors) <- DO_status_levels
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -69,6 +74,7 @@ ui <- fluidPage(
              sidebarLayout(position = "right",
                            sidebarPanel(
                              wellPanel(
+                               # Station summary text
                                uiOutput("youhavechosen"),
                                hr(),
                                plotlyOutput("mininplot")),
@@ -158,10 +164,10 @@ ui <- fluidPage(
              ))
              ),
     
-    # Search by Station --------------------------------------------------------------
+    # Display Continuous  --------------------------------------------------------------
     
     tabPanel(
-      "Search by Station",
+      "Display Continuous Data",
       fluidPage(
         tabsetPanel(
           tabPanel("Plots",
@@ -560,7 +566,7 @@ n_sum() %>%
   })
   
   
-  # Search by Station --------------------------------------------------------
+  # Display Continuous  --------------------------------------------------------
 
   
   stations_subset <- reactive({
@@ -666,27 +672,38 @@ n_sum() %>%
 
 # graph to table ----------------------------------------------------------
 
-  output$brush <- renderPrint({
-    d <- event_data("plotly_selected", source = "A")
-    if (is.null(d)) "Click and drag events appear here" else d
-  })
+  # creates main df from selection of do data joined back with other data
   
-  
-  output$graph_to_table <- DT::renderDT({
+  plot.subset <- reactive({
     event.data <- event_data("plotly_selected", source = "A")
-    
     if (is.null(event.data)) return(NULL)
-
+    
     Meets_criteria <- subset(stations_subset(),
-                          DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
+                             DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
     Excursion <- subset(stations_subset(),
-                           DO_status == "Excursion")[subset(event.data,
-                                                     curveNumber == 1)$pointNumber + 1,]
+                        DO_status == "Excursion")[subset(event.data,
+                                                         curveNumber == 1)$pointNumber + 1,]
     
     plot.subset <- rbind(Meets_criteria, Excursion)
     
+    plot.subset
+  })
+  
+  # creates mini df of summary of meets/fails do observations within selection window
+  plot.summ <- reactive({
+    
+    plot.subset() %>%
+      group_by(DO_status) %>%
+      summarize(Count = n())
+  })
+  
+  
+  # main table of plotly data joined with other data
+  output$graph_to_table <- DT::renderDT({
+    req(plot.subset())
+    
     DT::datatable(
-      data = plot.subset,
+      data = plot.subset(),
       style = "bootstrap",
       extensions = 'Buttons',
       options = list(dom = 'Bfrtip',
@@ -695,41 +712,28 @@ n_sum() %>%
                      nowrap = TRUE,
                      scrollX = TRUE,
                      buttons = c('excel', 'csv', 'pdf')
-                     ),
+      ),
       rownames = FALSE,
       filter = 'top'
     ) %>% 
       DT::formatDate("datetime", "toLocaleString")
-
-    })
-  
-  
-  
-  
-  
-  output$summaryplot <- renderPlotly({
-
-    event.data <- event_data("plotly_selected", source = "A")
-    if (is.null(event.data)) return(NULL)
-
-    Meets_criteria <- subset(stations_subset(),
-                             DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
-    Excursion <- subset(stations_subset(),
-                        DO_status == "Excursion")[subset(event.data,
-                                                         curveNumber == 1)$pointNumber + 1,]
-
-    plot.subset <- rbind(Meets_criteria, Excursion)
-
-    plot.summ <- plot.subset %>%
-      group_by(DO_status) %>%
-      summarize(Count = n())
     
-    plot_ly(plot.summ,
+  })
+  
+  
+  
+  
+
+# plotly summary bar plot -------------------------------------------------------
+
+  output$summaryplot <- renderPlotly({
+    req(plot.summ())
+    
+    plot_ly(plot.summ(),
             x = ~DO_status,
             y = ~Count,
             type = "bar",
-            color = ~DO_status,
-            colors =  c("#F4A767", "#325C62")) %>%
+            color = ~color_map[DO_status]) %>%
       layout(title = "Count",
              plot_bgcolor = "#dee5ef"
              # ,
@@ -737,26 +741,30 @@ n_sum() %>%
              )
   })
   
+  #  mini table with summary data
   output$plot.summ <- DT::renderDT({
-    event.data <- event_data("plotly_selected", source = "A")
-    if (is.null(event.data)) return(NULL)
-    
-    Meets_criteria <- subset(stations_subset(),
-                             DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
-    Excursion <- subset(stations_subset(),
-                        DO_status == "Excursion")[subset(event.data,
-                                                         curveNumber == 1)$pointNumber + 1,]
-    
-    plot.subset <- rbind(Meets_criteria, Excursion)
-    
-    plot.summ <- plot.subset %>%
-      group_by(DO_status) %>%
-      summarize(Count = n())
-    
-plot.summ
+    req(plot.summ())
+    plot.summ() %>% 
+      mutate(Percent = round(Count/sum(Count)*100))
   })
   
-  
+  # output$meetscriteriapct <- renderUI({
+  #   req(event.data)
+  #   
+  #   plot.summ %>% 
+  #     mutate(pct = Count/sum(Count))
+  #     
+  # 
+  #   
+  #   HTML(
+  #     paste(tags$h5(),
+  #           "MLocID: ", d$MLocID, "<br/>"
+  #           
+  #     ))
+  # 
+  # 
+  # })
+
 
 # DO map ------------------------------------------------------------------
 
