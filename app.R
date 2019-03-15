@@ -52,10 +52,23 @@ sd <- sites
 
 s <- left_join(sd, meets, by = "MLocID")
 
+marginlist <- list(
+  l = 60,
+  r = 20, 
+  b = 50,
+  t = 20,
+  pad = 8
+)
+# pal <- c("red", "blue", "green")
+# pal <- setNames(pal, c("virginica", "setosa", "versicolor"))
+
+pal <- viridis_pal(option = "D", direction = -1)(14)
+pal <- setNames(pal, unique(md2$Site))
 
 
 #colors
 coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
+sitecol <- viridis_pal(option = "D")(14)
 
 color_map <- c("Meets criteria" = "#F4A767", "Excursion" = "#325C62")
 DO_status_levels <- c("Meets criteria", "Excursion")
@@ -104,42 +117,41 @@ ui <- fluidPage(
                            
              )),
     
-    # Data overview --------------------------------------------------------------
-    tabPanel("Data Overview",
+    # Overview plots --------------------------------------------------------------
+    tabPanel("Overview Plots",
              # Subpanel Samples per year ------------------------------------------------------------
              tabsetPanel(
-               tabPanel("Plot of total number of samples per year",
+               tabPanel("Sample summary",
                         sidebarLayout(
                           sidebarPanel(
                             width = 3,
                             selectInput(inputId = "plottype",
                                         "Select:", 
-                                        choices = c("All data" = "nplot",
-                                                    "Meets criteria only",
-                                                    "Excursion only",
-                                                    "Stacked")
+                                        choices = c("By time" = "month",
+                                                    "By site" = "Site")
                             )),
                           mainPanel(
-                            h4("Menu to the left isn't associated with anything yet."),
-                            h4("Eventually, the user will be able to choose between different plots."),
-                            h4("It's possible this could be combined with the boxplot tab."),
-                            plotlyOutput("nplot"),
                             plotlyOutput("nstackplot"),
                             plotlyOutput("sitecount2"))
                         )
                ),
                # Sub DO at each site ----------------
-               tabPanel("DO at each site",
+               tabPanel("Minimum DO per ampling event",
+                        br(),
                         sidebarLayout(
-                          sidebarPanel(position = "right",
-                                       checkboxGroupInput("SiteCheckGroup", 
-                                                          label = h3("Sites"), 
-                                                          choices = unique(md2$Site),
-                                                          selected = max(unique(md2$Site)))
+                          sidebarPanel(
+                            width = 3,
+                            checkboxGroupInput("SiteCheckGroup", 
+                                               label = h3("Sites"), 
+                                               choices = unique(md2$Site),
+                                               selected = max(unique(md2$Site)))
                           ),
                           mainPanel(
-                            h4("Minimum DO at a given site for a given sampling event."),
-                            plotlyOutput("avgdoplot")
+                            width = 9,
+                            wellPanel(
+                              h4("Minimum DO at a given site for a given sampling event."),
+                              plotlyOutput("mindoplot")
+                            )
                           )
                         )
                ),
@@ -171,63 +183,70 @@ ui <- fluidPage(
       fluidPage(
         tabsetPanel(
           tabPanel("Plots",
-                   sidebarPanel(
-                     width = 3,
-                     selectInput(
-                       inputId = "station_selection",
-                       label = "Select station:",
-                       choices = md2$Site
-                     ),
-                     selectInput(
-                       inputId = "x",
-                       label = "x-axis",
-                       choices = names(md2),
-                       selected = "datetime"
-                     ),
-                     selectInput(
-                       inputId = "y2",
-                       label = "2nd y-axis",
-                       choices = names(md2),
-                       selected = "temp"
-                     ),
-                     selectInput(
-                       inputId = "y3",
-                       label = "3rd y-axis",
-                       choices = names(md2),
-                       selected = "cond"
-                     ),
-                     selectInput(
-                       inputId = "y4",
-                       label = "4th y-axis",
-                       choices = names(md2),
-                       selected = "ph"
-                     ),
-                     dateRangeInput(inputId = 'daterange',
-                                    label = "Select dates:",
-                                    start = min(md2$datetime),
-                                    end = max(md2$datetime)-1,
-                                    min = min(md2$datetime), max = "2016-12-31",
-                                    separator = " to ", format = "mm/dd/yy",
-                                    startview = 'year', weekstart = 0
-                     )
-                   ),
-                   mainPanel(
-                     fluidRow(
-                       column(8,
-                              br(),
-                              plotlyOutput("subplot", height = 800)
-                              
+                   br(),
+                   sidebarLayout(
+                     sidebarPanel(
+                       width = 3,
+                       selectInput(
+                         inputId = "station_selection",
+                         label = "Select station:",
+                         choices = md2$Site
                        ),
-                       column(4,
-                              hr(),
-                              plotlyOutput("summaryplot"),
-                              hr(),
-                              DT::dataTableOutput("plot.summ"))
-                     )
-                     
-                     # ,
-                     # verbatimTextOutput("brush")
-                   )),
+                       selectInput(
+                         inputId = "x",
+                         label = "x-axis",
+                         choices = names(md2),
+                         selected = "datetime"
+                       ),
+                       selectInput(
+                         inputId = "y2",
+                         label = "2nd y-axis",
+                         choices = names(md2),
+                         selected = "temp"
+                       ),
+                       selectInput(
+                         inputId = "y3",
+                         label = "3rd y-axis",
+                         choices = names(md2),
+                         selected = "cond"
+                       ),
+                       selectInput(
+                         inputId = "y4",
+                         label = "4th y-axis",
+                         choices = names(md2),
+                         selected = "ph"
+                       ),
+                       dateRangeInput(inputId = 'daterange',
+                                      label = "Select dates:",
+                                      start = min(md2$datetime),
+                                      end = max(md2$datetime)-1,
+                                      min = min(md2$datetime), max = "2016-12-31",
+                                      separator = " to ", format = "mm/dd/yy",
+                                      startview = 'year', weekstart = 0
+                       )
+                     ),
+                     mainPanel(
+                       fluidRow(
+                         column(8,
+                                wellPanel(
+                                  plotlyOutput("subplot", height = 800)
+                                )
+                                
+                         ),
+                         column(4,
+                                wellPanel(
+                                  # hr(),
+                                  plotlyOutput("summaryplot"),
+                                  hr(),
+                                  DT::dataTableOutput("plot.summ")
+                                )
+                         )
+                         
+                         # ,
+                         # verbatimTextOutput("brush")
+                       )
+                     ))
+          ),
           # ,
           tabPanel("Data Selected From Graph, in a Table",
                    # verbatimTextOutput("brush"),
@@ -298,8 +317,7 @@ server <- function(input, output, session) {
     d <- s %>% 
       filter(MLocID == input$map_marker_click$id)
     
-    HTML(
-         paste(tags$h4(d$StationDes),
+    HTML(paste(tags$h4(d$StationDes),
                "MLocID: ", d$MLocID, "<br/>",
                "Lat/long: ", round(d$Lat_DD, 4), ", ", round(d$Long_DD, 4), "<br/>",
                "River mile: ", round(d$RiverMile, 2), "<br/>",
@@ -389,17 +407,18 @@ server <- function(input, output, session) {
               type = "bar",
               color = ~season,
               colors = viridis_pal()(5)) %>%
-      layout(yaxis = list(title = 'Count'),
+      layout(margin = list(b = 20),
+             yaxis = list(title = 'Count'),
              xaxis = list(title = "Date",
                           range = c(min(md2$datetime), max(md2$datetime))),
              barmode = 'group')
   })  
   
   
-  # DATA OVERVIEW TAB----- 
+  # overview plots----- 
   n_sum <- reactive({
     md2 %>% 
-      select(MLocID, StationDes, datetime, DO_status) %>% 
+      select(MLocID, StationDes, Site, datetime, DO_status) %>% 
       group_by(month = floor_date(datetime, "month")) %>% 
       mutate(n_samples = n()) %>% 
       mutate(season = factor(month.abb[month(datetime)],
@@ -409,33 +428,34 @@ server <- function(input, output, session) {
   
   
 # nplot ------------------------------------------------------
-  output$nplot <- renderPlotly({
-    
-      plot_ly(n_sum(),
-              x = ~as.factor(month),
-              y = ~n_samples,
-              type = "bar",
-              color = ~season, colors = viridis_pal()(3)) %>%
-      layout(yaxis = list(title = 'Count'),
-             xaxis = list(title = "Date",
-                          tickangle = 55
-                          # ,
-                          # range = c("2007-01-01", "2016-12-31")
-                          )
-      )
-             # ,
-             # barmode = 'group')
-  })
+  # output$nplot <- renderPlotly({
+  #   
+  #     plot_ly(n_sum(),
+  #             x = ~as.factor(month),
+  #             y = ~n_samples,
+  #             type = "bar",
+  #             color = ~season, colors = viridis_pal()(5)) %>%
+  #     layout(yaxis = list(title = 'Count'),
+  #            xaxis = list(title = "Date",
+  #                         tickangle = 55
+  #                         # ,
+  #                         # range = c("2007-01-01", "2016-12-31")
+  #                         )
+  #     )
+  #            # ,
+  #            # barmode = 'group')
+  # })
 
-# stacked do count --------------------------------------------------------
+# summary --------------------------------------------------------
 n2 <- reactive({
 n_sum() %>%
-    group_by(MLocID, month, DO_status) %>% 
+    group_by(MLocID, month, StationDes, Site, DO_status) %>% 
     summarise(n = n()) %>% 
     ungroup() %>% 
     spread(DO_status, n, fill = 0) %>% 
     rename(over = "Meets criteria",
-           under = "Excursion")
+           under = "Excursion") %>% 
+    mutate(month = as.factor(month))
 }
 )
   
@@ -443,7 +463,7 @@ n_sum() %>%
   output$nstackplot <- renderPlotly({
 
     plot_ly(n2(),
-            x = ~as.factor(month)) %>% 
+            x = ~get(input$plottype)) %>% 
       add_trace(
             y = ~under,
             name = 'Excursion',
@@ -453,26 +473,18 @@ n_sum() %>%
                 name = 'Meets criteria',
                 marker = list(color = 'rgb(49,130,189)'),
                 type = 'bar') %>%
-      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+      layout(yaxis = list(title = 'Count'), barmode = 'group')
   
   })
   
   
  output$sitecount2 <- renderPlotly({
-   n2 <- n_sum() %>%
-     group_by(StationDes, MLocID, month, DO_status) %>% 
-     summarise(n = n()) %>% 
-     ungroup() %>% 
-     spread(DO_status, n, fill = 0) %>% 
-     rename(over = "Meets criteria",
-            under = "Excursion")
-   
-    plot_ly(n2,
-            x = ~MLocID,
-            text = ~StationDes,
-            hoverinfo = "text",
-            hovertext = paste("Station:", n2$StationDes,
-                              "<br> Date: ", n2$month)) %>% 
+    plot_ly(n2(),
+            x = ~Site) %>% 
+            # text = ~MLocID,
+            # hoverinfo = "text",
+            # hovertext = paste("Station:", n2()$MLocID,
+            #                   "<br> Date: ", n2()$month)) %>% 
       add_trace(
         y = ~under, 
         type = 'bar',
@@ -483,12 +495,12 @@ n_sum() %>%
         type = "bar",
         marker = list(color = 'rgb(49,130,189)'),
         name = 'Meets criteria') %>%
-      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+      layout(yaxis = list(title = 'Count'), barmode = 'group')
   })
   
   
   
-# do summary plot ---------------------------------------------------------
+# min do plot ---------------------------------------------------------
 
  wdi <- reactive({
    md2 %>%
@@ -499,12 +511,14 @@ n_sum() %>%
  })
 
   
-  output$avgdoplot <- renderPlotly({
-
-    plot_ly(wdi(), x = ~month.p, y = ~min,
+  output$mindoplot <- renderPlotly({
+    req(wdi())
+    plot_ly(wdi(),
+            x = ~month.p,
+            y = ~min,
             text = ~paste('Site:', StationDes),
             color = ~Site,
-            colors = viridis_pal(option = "D")(14),
+            colors = pal,
             # colors = coul,
             mode = "markers",
             type = "scatter",
@@ -513,9 +527,13 @@ n_sum() %>%
                                       width = 0.2),
                           alpha = 0.8)) %>%
       layout(showlegend = FALSE,
+             margin = marginlist,
+             # paper_bgcolor = "#ecf0f1",
+             # plot_bgcolor = "#ecf0f1",
              xaxis = list(title = "Date",
-                          range = c("2007-01-01", "2016-12-31")),
-             yaxis = list(title = "Minimum Dissolved Oxygen")
+                          range = c("2007-01-01", "2017-01-31")),
+             yaxis = list(title = "Minimum Dissolved Oxygen",
+                          range = c(-2, 14))
              # ,
              # autosize = FALSE, width = 1000, height = 800
              )
@@ -598,7 +616,7 @@ n_sum() %>%
             type = "scatter")
   })
 
-# Subplot -----------------------------------------------------------------
+# DO Subplot -----------------------------------------------------------------
 
   output$subplot <- renderPlotly({
     DO_pal <- c("#000000", "#325C62", "#F4A767")
@@ -625,7 +643,7 @@ n_sum() %>%
                  name = toTitleCase(input$y2),
                  title = toTitleCase(input$y2),
                  marker = list(color = "#3C3545"),
-                 type = "scattergl") %>% 
+                 type = "scatter") %>% 
       layout(
         yaxis = list(
           title = toTitleCase(input$y2)
@@ -658,6 +676,8 @@ n_sum() %>%
     sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE, titleY = TRUE)
     sp %>% 
       layout(
+        # plot_bgcolor = "#ecf0f1",
+        paper_bgcolor = "#ecf0f1",
         # dragmode = "select",
         xaxis = list(
           title = toTitleCase(input$x),
@@ -735,7 +755,9 @@ n_sum() %>%
             type = "bar",
             color = ~color_map[DO_status]) %>%
       layout(title = "Count",
-             plot_bgcolor = "#dee5ef"
+             paper_bgcolor = "#ecf0f1"
+             # ,
+             # plot_bgcolor = "#dee5ef"
              # ,
              # yaxis = list(domain = c(0, 1))
              )
