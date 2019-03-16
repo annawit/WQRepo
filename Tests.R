@@ -809,4 +809,62 @@ btw <- md2 %>%
   filter(between(do_sat, left = 140, right = 500))
 
 write.csv(btw, "dosatsample.csv")
+
+
+
+md2 <- dta1 %>% 
+  mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria"))
+
+
+n_sum <- md2 %>% 
+    select(MLocID, StationDes, Site, datetime, in_spawn, DO_lim, DO_status) %>% 
+    group_by(month = floor_date(datetime, "month")) %>% 
+    mutate(n_samples = n()) %>% 
+    mutate(season = factor(month.abb[month(datetime)],
+                           levels = c("May", "Jun", "Jul", "Aug", "Oct")))
+
+
+# summary --------------------------------------------------------
+n2 <- n_sum %>%
+    group_by(MLocID, month, StationDes, Site, in_spawn, DO_lim, DO_status) %>% 
+    summarise(n = n()) %>% 
+    ungroup() %>% 
+    spread(DO_status, n, fill = 0) %>% 
+    rename(over = "Meets criteria",
+           under = "Excursion") %>% 
+    mutate(month = as.factor(month))
+
+pl <- plot_ly(n2,
+          x = ~in_spawn) %>% 
+    add_trace(
+      y = ~under,
+      name = 'Excursion',
+      marker = list(color = 'rgb((204,204,204))'),
+      type = 'bar') %>%
+    add_trace(y = ~over,
+              name = 'Meets criteria',
+              marker = list(color = 'rgb(49,130,189)'),
+              type = 'bar') %>%
+    layout(yaxis = list(title = 'Count'), barmode = 'group') 
+
+pl
+
+pm <- plot_ly(n2,
+              x = ~DO_lim) %>% 
+  add_trace(
+    y = ~under,
+    name = 'Excursion',
+    marker = list(color = 'rgb((204,204,204))'),
+    type = 'bar') %>%
+  add_trace(y = ~over,
+            name = 'Meets criteria',
+            marker = list(color = 'rgb(49,130,189)'),
+            type = 'bar') %>%
+  layout(yaxis = list(title = 'Count'), barmode = 'group') 
+
+pm
+
+g <- md2 %>% 
+  group_by(Site, crit_Instant) %>% 
+  tally()
   

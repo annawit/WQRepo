@@ -121,22 +121,29 @@ ui <- fluidPage(
     tabPanel("Overview Plots",
              # Subpanel Samples per year ------------------------------------------------------------
              tabsetPanel(
+               
                tabPanel("Sample summary",
+                        br(),
                         sidebarLayout(
                           sidebarPanel(
                             width = 3,
                             selectInput(inputId = "plottype",
                                         "Select:", 
                                         choices = c("By time" = "month",
-                                                    "By site" = "Site")
+                                                    "By site" = "MLocID",
+                                                    "By spawning" = "Spawning",
+                                                    "By DO limit" = "DO Limit")
                             )),
                           mainPanel(
-                            plotlyOutput("nstackplot"),
-                            plotlyOutput("sitecount2"))
+                            wellPanel(
+                              plotlyOutput("nstackplot", height = 500),
+                              verbatimTextOutput("click")
+                            )
+                          )
                         )
                ),
-               # Sub DO at each site ----------------
-               tabPanel("Minimum DO per ampling event",
+               # Min DO ----------------
+               tabPanel("Minimum DO per sampling event",
                         br(),
                         sidebarLayout(
                           sidebarPanel(
@@ -156,25 +163,41 @@ ui <- fluidPage(
                         )
                ),
                
-               # Subpanel boxplots ------------------------------------------------------------
+               # boxplots ------------------------------------------------------------
                
                tabPanel("Boxplots",
+                        br(),
                         sidebarLayout(
                           sidebarPanel(
                             width = 3,
-                            selectInput("boxploty",
-                                        "Select boxplot to display:",
-                                        choices = c("By station", "By season", "By month"))
-                          ),
+                            selectInput("boxplotx",
+                                        "Select x-axis:",
+                                        choices = c("By site" = "MLocID", "By season" = "season", "By year" = "year")),
+                            selectInput("boxplotgroup",
+                                        "Select color:",
+                                        choices = c("By site" = "MLocID", "By season" = "season", "By year" = "year")),
+                            radioButtons("boxplotradio",
+                                         "Water body type",
+                                         c("Estuary only" = "6.5",
+                                           "River only" = "8")),
+                            checkboxGroupInput("boxplotsites", 
+                                               label = h3("Select sites"), 
+                                               choices = unique(md2$Site),
+                                               selected = unique(md2$Site))
+                            ),
                           mainPanel(
                             width = 9,
-                            plotlyOutput("summaryboxplot"),
-                            plotlyOutput("summaryboxplot2"),
-                            plotlyOutput("summaryboxplot3")
+                            br(),
+                            wellPanel(
+                              plotlyOutput("summaryboxplot")
+                            )
+                            # ,
+                            # plotlyOutput("summaryboxplot2"),
+                            # plotlyOutput("summaryboxplot3")
                           )
                         )
-             ))
-             ),
+               ))
+    ),
     
     # Display Continuous  --------------------------------------------------------------
     
@@ -418,47 +441,28 @@ server <- function(input, output, session) {
   # overview plots----- 
   n_sum <- reactive({
     md2 %>% 
-      select(MLocID, StationDes, Site, datetime, DO_status) %>% 
+      select(MLocID, StationDes, Site, datetime, in_spawn, DO_lim, DO_status) %>% 
       group_by(month = floor_date(datetime, "month")) %>% 
       mutate(n_samples = n()) %>% 
       mutate(season = factor(month.abb[month(datetime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct")))
   })
-  
-  
-  
-# nplot ------------------------------------------------------
-  # output$nplot <- renderPlotly({
-  #   
-  #     plot_ly(n_sum(),
-  #             x = ~as.factor(month),
-  #             y = ~n_samples,
-  #             type = "bar",
-  #             color = ~season, colors = viridis_pal()(5)) %>%
-  #     layout(yaxis = list(title = 'Count'),
-  #            xaxis = list(title = "Date",
-  #                         tickangle = 55
-  #                         # ,
-  #                         # range = c("2007-01-01", "2016-12-31")
-  #                         )
-  #     )
-  #            # ,
-  #            # barmode = 'group')
-  # })
+
 
 # summary --------------------------------------------------------
 n2 <- reactive({
 n_sum() %>%
-    group_by(MLocID, month, StationDes, Site, DO_status) %>% 
+    group_by(MLocID, month, StationDes, Site, in_spawn, DO_lim, DO_status) %>% 
     summarise(n = n()) %>% 
     ungroup() %>% 
     spread(DO_status, n, fill = 0) %>% 
     rename(over = "Meets criteria",
            under = "Excursion") %>% 
-    mutate(month = as.factor(month))
-}
-)
-  
+    mutate(month = as.factor(month),
+           Spawning = recode(in_spawn, "0" = "Not in spawning",
+                             "1" = "In spawning"),
+           `DO Limit` = DO_lim)
+})
   
   output$nstackplot <- renderPlotly({
 
@@ -467,37 +471,30 @@ n_sum() %>%
       add_trace(
             y = ~under,
             name = 'Excursion',
-            marker = list(color = 'rgb((204,204,204))'),
+            marker = list(color = "#DB532A"),
             type = 'bar') %>%
       add_trace(y = ~over,
                 name = 'Meets criteria',
                 marker = list(color = 'rgb(49,130,189)'),
                 type = 'bar') %>%
-      layout(yaxis = list(title = 'Count'), barmode = 'group')
+      layout(
+        margin = list(
+          l = 60,
+          r = 20, 
+          b = 100,
+          t = 20,
+          pad = 8
+        ),
+        yaxis = list(title = 'Count'),
+        xaxis = list(title = toTitleCase(input$plottype)),
+        barmode = 'group')
   
   })
-  
-  
- output$sitecount2 <- renderPlotly({
-    plot_ly(n2(),
-            x = ~Site) %>% 
-            # text = ~MLocID,
-            # hoverinfo = "text",
-            # hovertext = paste("Station:", n2()$MLocID,
-            #                   "<br> Date: ", n2()$month)) %>% 
-      add_trace(
-        y = ~under, 
-        type = 'bar',
-        marker = list(color = 'rgb((204,204,204))'),
-        name = 'Excursion') %>%
-      add_trace(
-        y = ~over,
-        type = "bar",
-        marker = list(color = 'rgb(49,130,189)'),
-        name = 'Meets criteria') %>%
-      layout(yaxis = list(title = 'Count'), barmode = 'group')
+
+  output$click <- renderPrint({
+    pc <- event_data("plotly_click")
+    if (is.null(pc)) "Click events appear here (double-click to clear)" else pc
   })
-  
   
   
 # min do plot ---------------------------------------------------------
@@ -533,7 +530,7 @@ n_sum() %>%
              xaxis = list(title = "Date",
                           range = c("2007-01-01", "2017-01-31")),
              yaxis = list(title = "Minimum Dissolved Oxygen",
-                          range = c(-2, 14))
+                          range = c(-1, 13))
              # ,
              # autosize = FALSE, width = 1000, height = 800
              )
@@ -547,15 +544,17 @@ n_sum() %>%
       mutate(month = floor_date(datetime, "month")) %>%
       mutate(season = factor(month.abb[month(datetime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
-      mutate(year = factor(floor_date(datetime, "year")))
+      mutate(year = factor(year(floor_date(datetime, "year")))) %>%
+      filter(crit_Instant == input$boxplotradio) %>% 
+      filter(Site %in% input$boxplotsites)
   })
   
   output$summaryboxplot <- renderPlotly({
     
     plot_ly(boxplotdata(),
-            x = ~factor(MLocID),
+            x = ~get(input$boxplotx),
             y = ~do,
-            color = ~season,
+            color = ~get(input$boxplotgroup),
             # colors = viridis_pal(option = "D")(5), 
             type = "box",
             text = ~paste('Site: ', StationDes,
@@ -571,17 +570,21 @@ n_sum() %>%
             color = ~MLocID, 
             colors = viridis_pal(option = "D")(5), type = "box",
             text = ~paste('Site: ', StationDes,
-                          "<br>", DO_lim)) %>%
+                          "<br>", DO_lim)) %>% 
       layout(boxmode = "group")
   })
   
   output$summaryboxplot3 <- renderPlotly({
-    plot_ly(boxplotdata(), x = ~year, y = ~do, color = ~MLocID, 
+    plot_ly(boxplotdata(),
+            x = ~year,
+            y = ~do,
+            color = ~MLocID, 
             colors = viridis_pal(option = "D")(5), type = "box",
             text = ~paste('Site: ', StationDes,
                           "<br>", DO_lim)) %>%
       layout(boxmode = "group")
-  })
+
+    })
   
   
   # Display Continuous  --------------------------------------------------------
