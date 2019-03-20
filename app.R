@@ -21,7 +21,14 @@ load("dataforwqapp.Rdata")
 
 
 md2 <- dta1 %>% 
-  mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria"))
+  mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria")) %>% 
+  rename(Temp = temp,
+         pH = ph,
+         Conductivity = cond,
+         SampleTime = datetime,
+         DO = do,
+         DO_Sat = do_sat)
+  
 
 # sts <- md2 %>% 
 #   group_by(MLocID, DO_status) %>% 
@@ -36,7 +43,7 @@ meets <- md2 %>%
   mutate(pctmeets = n/sum(n)) %>% 
   filter(DO_status == "Meets criteria") %>% 
   mutate(pctbin = cut(pctmeets, c(0, 0.5, 0.99, 1),
-                      include.lowest = TRUE, labels = c("<50", "50-99", ">99")))
+                      include.lowest = TRUE, labels = c("< 50", "50-99", "> 99")))
 
 pctcolor <- colorFactor(palette = "RdYlGn", meets$pctbin)
 
@@ -96,8 +103,8 @@ ui <- fluidPage(
                                  inputId = "checkboxtablesorter",
                                  label = "Select table columns to display:",
                                  choices = names(md2),
-                                 selected = c("MLocID", "datetime", "temp", "ph",
-                                              "do", "cond", "data_source",
+                                 selected = c("MLocID", "SampleTime", "Temp", "pH",
+                                              "DO", "Conductivity",
                                               "StationDes")
                                )),
                              wellPanel(
@@ -136,28 +143,30 @@ ui <- fluidPage(
                             )),
                           mainPanel(
                             wellPanel(
-                              plotlyOutput("nstackplot", height = 500),
-                              verbatimTextOutput("click")
+                              plotlyOutput("nstackplot", height = 500)
+                              # ,
+                              # verbatimTextOutput("click")
                             )
                           )
                         )
                ),
                # Min DO ----------------
-               tabPanel("Minimum DO per sampling event",
+               tabPanel("Minimum DO",
                         br(),
                         sidebarLayout(
                           sidebarPanel(
                             width = 3,
-                            checkboxGroupInput("SiteCheckGroup", 
-                                               label = h3("Sites"), 
-                                               choices = unique(md2$Site),
-                                               selected = max(unique(md2$Site)))
+                            selectInput("SiteCheckGroup", 
+                                        label = h3("Sites"), 
+                                        choices = unique(md2$Site),
+                                        selected = max(unique(md2$Site)),
+                                        multiple = TRUE)
                           ),
                           mainPanel(
                             width = 9,
                             wellPanel(
-                              h4("Minimum DO at a given site for a given sampling event."),
-                              plotlyOutput("mindoplot")
+                              h4("Minimum DO at a given site for a given sampling window"),
+                              plotlyOutput("mindoplot", height = 500)
                             )
                           )
                         )
@@ -172,22 +181,29 @@ ui <- fluidPage(
                             width = 3,
                             selectInput("boxplotx",
                                         "Select x-axis:",
-                                        choices = c("By site" = "MLocID", "By season" = "season", "By year" = "year")),
+                                        choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
                             selectInput("boxplotgroup",
                                         "Select color:",
-                                        choices = c("By site" = "MLocID", "By season" = "season", "By year" = "year")),
+                                        choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
                             radioButtons("boxplotradio",
                                          "Water body type",
-                                         c("Estuary only" = "6.5",
-                                           "River only" = "8")),
-                            checkboxGroupInput("boxplotsites", 
-                                               label = h3("Select sites"), 
-                                               choices = unique(md2$Site),
-                                               selected = unique(md2$Site))
+                                         c("Estuary sites" = "6.5",
+                                           "Freshwater sites" = "8")),
+                            selectInput("boxplotestsites", 
+                                        label = h3("Select sites"), 
+                                        choices = unique(md2$Site),
+                                        selected = unique(md2$Site),
+                                        # choices = list("Estuary" = list(unique(md2 %>% filter(crit_Instant == "6.5") %>% select(Site))), 
+                                        #                "Freshwater" = list(unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)))),
+                                        multiple = TRUE)
+                            # selectInput("boxplotfreshsites", 
+                            #             label = h3("Select sites"), 
+                            #             choices = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
+                            #             selected = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
+                            #             multiple = TRUE)
                             ),
                           mainPanel(
                             width = 9,
-                            br(),
                             wellPanel(
                               plotlyOutput("summaryboxplot")
                             )
@@ -219,31 +235,31 @@ ui <- fluidPage(
                          inputId = "x",
                          label = "x-axis",
                          choices = names(md2),
-                         selected = "datetime"
+                         selected = "SampleTime"
                        ),
                        selectInput(
                          inputId = "y2",
                          label = "2nd y-axis",
                          choices = names(md2),
-                         selected = "temp"
+                         selected = "Temp"
                        ),
                        selectInput(
                          inputId = "y3",
                          label = "3rd y-axis",
                          choices = names(md2),
-                         selected = "cond"
+                         selected = "Conductivity"
                        ),
                        selectInput(
                          inputId = "y4",
                          label = "4th y-axis",
                          choices = names(md2),
-                         selected = "ph"
+                         selected = "pH"
                        ),
                        dateRangeInput(inputId = 'daterange',
                                       label = "Select dates:",
-                                      start = min(md2$datetime),
-                                      end = max(md2$datetime)-1,
-                                      min = min(md2$datetime), max = "2016-12-31",
+                                      start = min(md2$SampleTime),
+                                      end = max(md2$SampleTime)-1,
+                                      min = min(md2$SampleTime), max = "2016-12-31",
                                       separator = " to ", format = "mm/dd/yy",
                                       startview = 'year', weekstart = 0
                        )
@@ -276,36 +292,6 @@ ui <- fluidPage(
                    DT::dataTableOutput("graph_to_table"))
         )
       )
-    ),
-    
-    # Search by DO --------------------------------------------------------------
-    
-    tabPanel("Search by DO criteria",
-             fluidPage(
-               sidebarLayout(
-                 sidebarPanel(
-                   # selectizeInput(
-                   #   inputId = "station_pf",
-                   #   label = "Select station(s):",
-                   #   choices = md2$Site,
-                   #   multiple = TRUE
-                   # ),
-                   radioButtons(
-                     inputId = "DOPassFailRadio",
-                     label = "Select:",
-                     choices = c("Meets criteria" = 1, "Excursion" = 0),
-                     selected = "All"
-                   )
-                 ),
-                 mainPanel(
-                   tabsetPanel(
-                     tabPanel("Map",
-                              leafletOutput("DOmap")),
-                     tabPanel("Table")
-                   )
-                 )
-               )
-             )
     )
   )
 ) # End Fluid Page
@@ -313,8 +299,10 @@ ui <- fluidPage(
 # Server ------------------------------------------------------------------
 server <- function(input, output, session) {
 
-# Main Tab 1 Items --------------------------------------------------------
+# Leaflet map --------------------------------------------------------
   
+  # answer at bottom super helpful coloring circle markers
+  # https://stackoverflow.com/questions/32940617/change-color-of-leaflet-marker
   output$map <- renderLeaflet({
     leaflet() %>%
       addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
@@ -329,6 +317,10 @@ server <- function(input, output, session) {
                  label = ~paste0("Station ID: ", MLocID, " ", StationDes),
                  labelOptions = labelOptions(textOnly = FALSE),
                  layerId = sd$MLocID) %>%
+      addLegend("bottomright",
+                pal = pctcolor,
+                values = meets$pctbin,
+                title = "% All Samples Meeting Criteria") %>%
       addLayersControl(baseGroups = c("Esri Satellite Map",
                                       "Open Topo Map",
                                       "Carto"))
@@ -359,22 +351,7 @@ server <- function(input, output, session) {
         select(input$checkboxtablesorter) %>%
         filter(MLocID == input$map_marker_click$id)
       write.csv(m, file)
-    }
-  )
-  
-  # output$download_data <- downloadHandler({
-  #   
-  #   m <- md2 %>% 
-  #     select(input$checkboxtablesorter) %>%
-  #     filter(MLocID == input$map_marker_click$id)
-  #   
-  #   filename = function() {
-  #     paste(m, ".csv", sep = "")
-  #   }
-  #   content = function(file) {
-  #     write.csv(m, file, row.names = FALSE)
-  #   }
-  # })
+    })
   
 
 # table -------------------------------------------------------------------
@@ -400,19 +377,9 @@ server <- function(input, output, session) {
       rownames = FALSE,
       filter = 'bottom'
     ) %>% 
-      DT::formatDate("datetime", "toLocaleString")
+      DT::formatDate("SampleTime", "toLocaleString")
   })
   
-  
-  
- # mapclickmd2 <-  reactive({
- #    md2 %>% 
- #      filter(MLocID == input$map_marker_click$id) %>% 
- #      group_by(month = floor_date(datetime, "month")) %>% 
- #      mutate(n_samples = n()) %>% 
- #      mutate(season = factor(month.abb[month(datetime)],
- #                             levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
- #  })
 
 ## mini nplot --------------------------------------------------------------
 
@@ -421,9 +388,9 @@ server <- function(input, output, session) {
                          "Click on a station on the map to view data"))
     md2 %>% 
       filter(MLocID == input$map_marker_click$id) %>% 
-      group_by(month = floor_date(datetime, "month")) %>% 
+      group_by(month = floor_date(SampleTime, "month")) %>% 
       mutate(n_samples = n()) %>% 
-      mutate(season = factor(month.abb[month(datetime)],
+      mutate(season = factor(month.abb[month(SampleTime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
       plot_ly(x = ~month,
               y = ~n_samples,
@@ -433,7 +400,7 @@ server <- function(input, output, session) {
       layout(margin = list(b = 20),
              yaxis = list(title = 'Count'),
              xaxis = list(title = "Date",
-                          range = c(min(md2$datetime), max(md2$datetime))),
+                          range = c(min(md2$SampleTime), max(md2$SampleTime))),
              barmode = 'group')
   })  
   
@@ -441,10 +408,10 @@ server <- function(input, output, session) {
   # overview plots----- 
   n_sum <- reactive({
     md2 %>% 
-      select(MLocID, StationDes, Site, datetime, in_spawn, DO_lim, DO_status) %>% 
-      group_by(month = floor_date(datetime, "month")) %>% 
+      select(MLocID, StationDes, Site, SampleTime, in_spawn, DO_lim, DO_status) %>% 
+      group_by(month = floor_date(SampleTime, "month")) %>% 
       mutate(n_samples = n()) %>% 
-      mutate(season = factor(month.abb[month(datetime)],
+      mutate(season = factor(month.abb[month(SampleTime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct")))
   })
 
@@ -461,22 +428,24 @@ n_sum() %>%
     mutate(month = as.factor(month),
            Spawning = recode(in_spawn, "0" = "Not in spawning",
                              "1" = "In spawning"),
-           `DO Limit` = DO_lim)
+           `DO Limit` = recode_factor(DO_lim, "6.5" = "6.5 (Estuarine)", "8" = "8 (Cold Water - Aquatic Life)",
+                               "11" = "11 (Spawning)")
+    )
 })
   
   output$nstackplot <- renderPlotly({
 
     plot_ly(n2(),
             x = ~get(input$plottype)) %>% 
+      add_trace(y = ~over,
+                name = 'Meets criteria',
+                marker = list(color = 'rgb(49,130,189)'),
+                type = 'bar') %>%
       add_trace(
             y = ~under,
             name = 'Excursion',
             marker = list(color = "#DB532A"),
             type = 'bar') %>%
-      add_trace(y = ~over,
-                name = 'Meets criteria',
-                marker = list(color = 'rgb(49,130,189)'),
-                type = 'bar') %>%
       layout(
         margin = list(
           l = 60,
@@ -500,11 +469,13 @@ n_sum() %>%
 # min do plot ---------------------------------------------------------
 
  wdi <- reactive({
+   req(input$SiteCheckGroup)
+   
    md2 %>%
-     select(MLocID, datetime, do, Site, StationDes) %>% 
-     group_by(MLocID, Site, StationDes, month.p = floor_date(datetime, "month")) %>% 
+     select(MLocID, SampleTime, DO, Site, StationDes) %>% 
+     group_by(MLocID, Site, StationDes, month.p = floor_date(SampleTime, "month")) %>% 
      filter(Site %in% input$SiteCheckGroup) %>% 
-     summarize(min = min(do))
+     summarize(min = min(DO))
  })
 
   
@@ -529,7 +500,7 @@ n_sum() %>%
              # plot_bgcolor = "#ecf0f1",
              xaxis = list(title = "Date",
                           range = c("2007-01-01", "2017-01-31")),
-             yaxis = list(title = "Minimum Dissolved Oxygen",
+             yaxis = list(title = "Minimum Dissolved Oxygen, mg/L",
                           range = c(-1, 13))
              # ,
              # autosize = FALSE, width = 1000, height = 800
@@ -541,50 +512,27 @@ n_sum() %>%
   
   boxplotdata <-  reactive({
     md2 %>% 
-      mutate(month = floor_date(datetime, "month")) %>%
-      mutate(season = factor(month.abb[month(datetime)],
+      mutate(month = floor_date(SampleTime, "month")) %>%
+      mutate(season = factor(month.abb[month(SampleTime)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
-      mutate(year = factor(year(floor_date(datetime, "year")))) %>%
-      filter(crit_Instant == input$boxplotradio) %>% 
-      filter(Site %in% input$boxplotsites)
+      mutate(year = factor(year(floor_date(SampleTime, "year")))) %>%
+      filter(crit_Instant == input$boxplotradio) %>%
+      filter(Site %in% c(input$boxplotfreshsites, input$boxplotestsites))
   })
   
   output$summaryboxplot <- renderPlotly({
     
     plot_ly(boxplotdata(),
             x = ~get(input$boxplotx),
-            y = ~do,
+            y = ~DO,
             color = ~get(input$boxplotgroup),
             # colors = viridis_pal(option = "D")(5), 
             type = "box",
             text = ~paste('Site: ', StationDes,
                           "<br>", DO_lim)) %>%
-      layout(boxmode = "group")
+      layout(boxmode = "group",
+             xaxis = list(title = toTitleCase(input$boxplotx)))
   })
-  
-  output$summaryboxplot2 <- renderPlotly({
-
-    plot_ly(boxplotdata(),
-            x = ~season,
-            y = ~do,
-            color = ~MLocID, 
-            colors = viridis_pal(option = "D")(5), type = "box",
-            text = ~paste('Site: ', StationDes,
-                          "<br>", DO_lim)) %>% 
-      layout(boxmode = "group")
-  })
-  
-  output$summaryboxplot3 <- renderPlotly({
-    plot_ly(boxplotdata(),
-            x = ~year,
-            y = ~do,
-            color = ~MLocID, 
-            colors = viridis_pal(option = "D")(5), type = "box",
-            text = ~paste('Site: ', StationDes,
-                          "<br>", DO_lim)) %>%
-      layout(boxmode = "group")
-
-    })
   
   
   # Display Continuous  --------------------------------------------------------
@@ -594,10 +542,6 @@ n_sum() %>%
     req(input$station_selection)
     md2 %>% filter(Site %in% input$station_selection) %>% 
       select(-c(Lat_DD, Long_DD, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site))
-      # filter(datetime > input$daterange[1] & datetime < input$daterange[2])
-    # %>% 
-    #   filter(mdy(datetime) > mdy(input$daterange2[1]) & mdy(datetime) < mdy(input$daterange2[2]))
-    
   })
   
   output$subsetscatter <- renderPlotly({
@@ -623,11 +567,13 @@ n_sum() %>%
 
   output$subplot <- renderPlotly({
     DO_pal <- c("#000000", "#325C62", "#F4A767")
-    DO_pal <- setNames(DO_pal, c("do", "Meets criteria", "Excursion"))
-
+    DO_pal <- setNames(DO_pal, c("DO", "Meets criteria", "Excursion"))
+    
+    req(stations_subset())
+    
     a <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
-                 y = ~do,
+                 y = ~DO,
                  colors = DO_pal,
                  type = "scatter",
                  source = "A",
@@ -714,7 +660,7 @@ n_sum() %>%
   
   # creates mini df of summary of meets/fails do observations within selection window
   plot.summ <- reactive({
-    
+    req(plot.subset())
     plot.subset() %>%
       group_by(DO_status) %>%
       summarize(Count = n())
@@ -739,7 +685,7 @@ n_sum() %>%
       rownames = FALSE,
       filter = 'top'
     ) %>% 
-      DT::formatDate("datetime", "toLocaleString")
+      DT::formatDate("SampleTime", "toLocaleString")
     
   })
   
@@ -750,7 +696,8 @@ n_sum() %>%
 # plotly summary bar plot -------------------------------------------------------
 
   output$summaryplot <- renderPlotly({
-    req(plot.summ())
+    
+    req(plot.subset())
     
     plot_ly(plot.summ(),
             x = ~DO_status,
@@ -772,53 +719,7 @@ n_sum() %>%
     plot.summ() %>% 
       mutate(Percent = round(Count/sum(Count)*100))
   })
-  
-  # output$meetscriteriapct <- renderUI({
-  #   req(event.data)
-  #   
-  #   plot.summ %>% 
-  #     mutate(pct = Count/sum(Count))
-  #     
-  # 
-  #   
-  #   HTML(
-  #     paste(tags$h5(),
-  #           "MLocID: ", d$MLocID, "<br/>"
-  #           
-  #     ))
-  # 
-  # 
-  # })
 
-
-# DO map ------------------------------------------------------------------
-
-userdomd2 <- reactive({
-    md2 
-  # %>% 
-  #     filter(DO_status %in% input$DOPassFailRadio)
-  })
-  
-  
-  
-  
-  output$DOmap <- renderLeaflet({
-    leaflet() %>%
-      addProviderTiles("Esri.WorldImagery", group = "Esri Satellite Map") %>%
-      addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
-      addProviderTiles("CartoDB", group = "Carto") %>%
-      addMarkers(data = userdomd2(),
-                 lat = ~Lat_DD,
-                 lng = ~Long_DD,
-                 label = ~paste0("Station ID: ", MLocID, "
-                                 Site Name: ", StationDes),
-                 labelOptions = labelOptions(textOnly = FALSE),
-                 clusterOptions = markerClusterOptions(),
-                 layerId = userdomd2()$do) %>%
-      addLayersControl(baseGroups = c("Esri Satellite Map",
-                                      "Open Topo Map",
-                                      "Carto"))
-  })
   
   } #End Server
 
