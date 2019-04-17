@@ -432,7 +432,7 @@ server <- function(input, output, session) {
   })  
   
   
-  # overview plots----- 
+  # Overview Plots----- 
   n_sum <- reactive({
     md2 %>% 
       select(MLocID, `Station Description`, Site, `Sample Time`, in_spawn, DO_lim, DO_status) %>% 
@@ -599,7 +599,7 @@ n_sum() %>%
       need(input$station_selection,
       "Select a station to the left to view data"))
     
-    DO_pal <- c("#000000", "#325C62", "#DB532A")
+    DO_pal <- c("#000000", "#3182bd", "#DB532A")
     DO_pal <- setNames(DO_pal, c("DO", "Meets criteria", "Excursion"))
     
     # req(stations_subset())
@@ -753,12 +753,16 @@ n_sum() %>%
     
     req(plot.subset())
     
+    DO_pal <- c("#000000", "#3182bd", "#DB532A")
+    DO_pal <- setNames(DO_pal, c("DO", "Meets criteria", "Excursion"))
+    
     plot_ly(plot.summ(),
             x = ~DO_status,
             y = ~Count,
             type = "bar",
             name = ~DO_status,
-            color = ~color_map[DO_status]) %>%
+            colors = DO_pal,
+            color = ~DO_status) %>%
       layout(title = "Count",
              paper_bgcolor = "#ecf0f1"
              # ,
