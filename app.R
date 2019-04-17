@@ -9,8 +9,9 @@ library(shinyWidgets)
 library(shinythemes)
 library(viridis)
 library(RColorBrewer)
-library(rgdal)
+# library(rgdal)
 library(tools)
+library(leaflet.extras)
 
 
 # Data -------------------------------------------------------
@@ -22,18 +23,21 @@ load("dataforwqapp.Rdata")
 
 md2 <- dta1 %>% 
   mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria")) %>% 
-  rename(Temp = temp,
+  rename(`Station Description` = StationDes,
+         `Sample Time` = datetime,
+         Temp = temp,
+         `Temp Grade` = grade_temp,
          pH = ph,
+         `pH Grade` = grade_ph,
          Conductivity = cond,
-         SampleTime = datetime,
+         `Conductivity Grade` = grade_cond,
          DO = do,
-         DO_Sat = do_sat)
-  
-
-# sts <- md2 %>% 
-#   group_by(MLocID, DO_status) %>% 
-#   count() %>% 
-#   filter(DO_status == "Excursion")
+         `DO Grade` = grade_do,
+         `DO Sat` = do_sat,
+         `DO Sat Grade` = grade_do_sat,
+         `Data Source` = data_source,
+         Lat = Lat_DD,
+         Long = Long_DD)
 
 #gives percent meeting criteria at each site
 meets <- md2 %>% 
@@ -43,19 +47,18 @@ meets <- md2 %>%
   mutate(pctmeets = n/sum(n)) %>% 
   filter(DO_status == "Meets criteria") %>% 
   mutate(pctbin = cut(pctmeets, c(0, 0.5, 0.99, 1),
-                      include.lowest = TRUE, labels = c("< 50", "50-99", "> 99")))
+                      include.lowest = TRUE, labels = c("Less than 50%", "50%-99%", "Greater than 99%"))) 
 
 pctcolor <- colorFactor(palette = "RdYlGn", meets$pctbin)
 
 plot <- ggplot(data = meets, aes(x = MLocID, y = pctmeets, fill = DO_status)) +
   geom_bar(stat = 'identity', position = 'dodge')
-plot
-
-
-md2
 
 load("sitesummary.Rdata")
-sd <- sites
+sd <- sites%>% 
+  rename(`Station Description` = StationDes,
+         Lat = Lat_DD,
+         Long = Long_DD)
 
 s <- left_join(sd, meets, by = "MLocID")
 
@@ -77,9 +80,9 @@ pal <- setNames(pal, unique(md2$Site))
 coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
 sitecol <- viridis_pal(option = "D")(14)
 
-color_map <- c("Meets criteria" = "#F4A767", "Excursion" = "#325C62")
+color_map <- c("Meets criteria" = "#F4A767", "Excursion" = "#DB532A")
 DO_status_levels <- c("Meets criteria", "Excursion")
-DO_status_colors <- c("#F4A767", "#325C62")
+DO_status_colors <- c("#F4A767", "#DB532A")
 names(DO_status_colors) <- DO_status_levels
 
 
@@ -89,210 +92,227 @@ ui <- fluidPage(
   navbarPage(
     "Continuous Dissolved Oxygen Visualizer",
     
-    # Select from map --------------------------------------------------------------
-    tabPanel("Select from map",
-             sidebarLayout(position = "right",
-                           sidebarPanel(
-                             wellPanel(
-                               # Station summary text
-                               uiOutput("youhavechosen"),
-                               hr(),
-                               plotlyOutput("mininplot")),
-                             wellPanel(
-                               checkboxGroupButtons(
-                                 inputId = "checkboxtablesorter",
-                                 label = "Select table columns to display:",
-                                 choices = names(md2),
-                                 selected = c("MLocID", "SampleTime", "Temp", "pH",
-                                              "DO", "Conductivity",
-                                              "StationDes")
-                               )),
-                             wellPanel(
-                               HTML("Select a station and variables,
+# Select from map --------------------------------------------------------------
+tabPanel("Select from map",
+         sidebarLayout(
+           # puts sidebar on the right side
+           position = "right",
+           sidebarPanel(
+             wellPanel(
+               # Station summary text
+               uiOutput("youhavechosen"),
+               # hr adds a subtle line and space in the UI
+               hr(),
+               # this is the summary bar plot
+               plotlyOutput("mininplot")),
+             wellPanel(
+               # These are the table columns selector
+               checkboxGroupButtons(
+                 inputId = "checkboxtablesorter",
+                 label = "Select table columns to display:",
+                 choices = names(md2),
+                 selected = c("MLocID", "Sample Time", "Temp", "pH",
+                              "DO", "Conductivity",
+                              "Station Description"))),
+             wellPanel(
+               HTML("Select a station and variables,
                                              then hit 'Download data'."),
-                               hr(),
-                               downloadButton(
-                                 outputId = "download_data",
-                                 label = "Download table data")
-                             )),
-                           mainPanel(
-                             wellPanel(leafletOutput("map")),
-                             wellPanel(DT::dataTableOutput("table"),
-                                       br(),
-                                       br())
-                           )
-                           
+               hr(),
+               downloadButton(
+                 outputId = "download_data",
+                 label = "Download table data")
              )),
+           mainPanel(
+             wellPanel(leafletOutput("map")),
+             wellPanel(DT::dataTableOutput("table"),
+                       br(),
+                       br())
+           )
+           
+         )),
     
-    # Overview plots --------------------------------------------------------------
-    tabPanel("Overview Plots",
-             # Subpanel Samples per year ------------------------------------------------------------
-             tabsetPanel(
-               
-               tabPanel("Sample summary",
-                        br(),
-                        sidebarLayout(
-                          sidebarPanel(
-                            width = 3,
-                            selectInput(inputId = "plottype",
-                                        "Select:", 
-                                        choices = c("By time" = "month",
-                                                    "By site" = "MLocID",
-                                                    "By spawning" = "Spawning",
-                                                    "By DO limit" = "DO Limit")
-                            )),
-                          mainPanel(
-                            wellPanel(
-                              plotlyOutput("nstackplot", height = 500)
-                              # ,
-                              # verbatimTextOutput("click")
-                            )
-                          )
-                        )
-               ),
-               # Min DO ----------------
-               tabPanel("Minimum DO",
-                        br(),
-                        sidebarLayout(
-                          sidebarPanel(
-                            width = 3,
-                            selectInput("SiteCheckGroup", 
-                                        label = h3("Sites"), 
-                                        choices = unique(md2$Site),
-                                        selected = max(unique(md2$Site)),
-                                        multiple = TRUE)
-                          ),
-                          mainPanel(
-                            width = 9,
-                            wellPanel(
-                              h4("Minimum DO at a given site for a given sampling window"),
-                              plotlyOutput("mindoplot", height = 500)
-                            )
-                          )
-                        )
-               ),
-               
-               # boxplots ------------------------------------------------------------
-               
-               tabPanel("Boxplots",
-                        br(),
-                        sidebarLayout(
-                          sidebarPanel(
-                            width = 3,
-                            selectInput("boxplotx",
-                                        "Select x-axis:",
-                                        choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
-                            selectInput("boxplotgroup",
-                                        "Select color:",
-                                        choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
-                            radioButtons("boxplotradio",
-                                         "Water body type",
-                                         c("Estuary sites" = "6.5",
-                                           "Freshwater sites" = "8")),
-                            selectInput("boxplotestsites", 
-                                        label = h3("Select sites"), 
-                                        choices = unique(md2$Site),
-                                        selected = unique(md2$Site),
-                                        # choices = list("Estuary" = list(unique(md2 %>% filter(crit_Instant == "6.5") %>% select(Site))), 
-                                        #                "Freshwater" = list(unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)))),
-                                        multiple = TRUE)
-                            # selectInput("boxplotfreshsites", 
-                            #             label = h3("Select sites"), 
-                            #             choices = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
-                            #             selected = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
-                            #             multiple = TRUE)
-                            ),
-                          mainPanel(
-                            width = 9,
-                            wellPanel(
-                              plotlyOutput("summaryboxplot")
-                            )
-                            # ,
-                            # plotlyOutput("summaryboxplot2"),
-                            # plotlyOutput("summaryboxplot3")
-                          )
-                        )
-               ))
+# Overview plots --------------------------------------------------------------
+tabPanel("Overview Plots",
+# Sample summary ------------------------------------------------------------
+tabsetPanel(
+  tabPanel("Sample summary",
+           br(),
+           sidebarLayout(
+             sidebarPanel(
+               width = 3,
+               selectInput(inputId = "plottype",
+                           "Select:", 
+                           choices = c("By time" = "month",
+                                       "By site" = "MLocID",
+                                       "By spawning" = "Spawning",
+                                       "By DO limit" = "DO Limit")
+               )),
+             mainPanel(
+               wellPanel(
+                 plotlyOutput("nsummaryplot", height = 500)
+               )
+             )
+           )
+  ),
+# Minimum DO ----------------
+  tabPanel("Minimum DO",
+           br(),
+           sidebarLayout(
+             sidebarPanel(
+               width = 3,
+               # selectInput("SiteCheckGroup", 
+               #             label = h3("Sites"), 
+               #             choices = unique(md2$Site),
+               #             selected = max(unique(md2$Site)),
+               #             multiple = TRUE),
+               pickerInput(inputId = "SiteCheckGroup", 
+                           label = h3("Select sites:"), 
+                           choices = list(
+                             Estuarine = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)","34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)","10523-ORDEQ Nestucca R at Cloverdale", "13421-ORDEQ Wilson River at Hwy 101", "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
+                             Freshwater = c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", "21800-ORDEQ Nestucca River at River Mile 38.57", "13428-ORDEQ Dougherty Slough at Hwy 101", "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", "29302-ORDEQ Nehalem River at Spruce Run Creek", "13368-ORDEQ Nehalem River at River Mile 15.0", "29292-ORDEQ Nehalem River at Salmonberry River")
+                           ),
+                           selected = unique(md2$Site),
+                           multiple = TRUE
+               )
+             ),
+             mainPanel(
+               width = 9,
+               wellPanel(
+                 h4("Minimum DO at a given site for a given sampling window"),
+                 plotlyOutput("mindoplot", height = 500)
+               )
+             )
+           )
+  ),
+  
+# Boxplots ------------------------------------------------------------
+  
+  tabPanel("Boxplots",
+           br(),
+           sidebarLayout(
+             sidebarPanel(
+               width = 3,
+               selectInput("boxplotx",
+                           "Select x-axis:",
+                           choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
+               selectInput("boxplotgroup",
+                           "Select color:",
+                           choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
+               radioButtons("boxplotradio",
+                            "Water body type",
+                            c("Estuary sites" = "6.5",
+                              "Freshwater sites" = "8")),
+               pickerInput(inputId = "boxplotestsites", 
+                           label = h3("Select sites:"), 
+                           choices = list(
+                             Estuarine = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)","34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)","10523-ORDEQ Nestucca R at Cloverdale", "13421-ORDEQ Wilson River at Hwy 101", "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
+                             Freshwater = c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", "21800-ORDEQ Nestucca River at River Mile 38.57", "13428-ORDEQ Dougherty Slough at Hwy 101", "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", "29302-ORDEQ Nehalem River at Spruce Run Creek", "13368-ORDEQ Nehalem River at River Mile 15.0", "29292-ORDEQ Nehalem River at Salmonberry River")
+                           ),
+                           selected = unique(md2$Site),
+                           multiple = TRUE
+                           )
+               # selectInput("boxplotfreshsites", 
+               #             label = h3("Select sites"), 
+               #             choices = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
+               #             selected = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
+               #             multiple = TRUE)
+             ),
+             mainPanel(
+               width = 9,
+               wellPanel(
+                 plotlyOutput("summaryboxplot")
+               )
+               # ,
+               # plotlyOutput("summaryboxplot2"),
+               # plotlyOutput("summaryboxplot3")
+             )
+           )
+  ))
     ),
     
-    # Display Continuous  --------------------------------------------------------------
+# Display Continuous  --------------------------------------------------------------
     
-    tabPanel(
-      "Display Continuous Data",
-      fluidPage(
-        tabsetPanel(
-          tabPanel("Plots",
-                   br(),
-                   sidebarLayout(
-                     sidebarPanel(
-                       width = 3,
-                       selectInput(
-                         inputId = "station_selection",
-                         label = "Select station:",
-                         choices = md2$Site
-                       ),
-                       selectInput(
-                         inputId = "x",
-                         label = "x-axis",
-                         choices = names(md2),
-                         selected = "SampleTime"
-                       ),
-                       selectInput(
-                         inputId = "y2",
-                         label = "2nd y-axis",
-                         choices = names(md2),
-                         selected = "Temp"
-                       ),
-                       selectInput(
-                         inputId = "y3",
-                         label = "3rd y-axis",
-                         choices = names(md2),
-                         selected = "Conductivity"
-                       ),
-                       selectInput(
-                         inputId = "y4",
-                         label = "4th y-axis",
-                         choices = names(md2),
-                         selected = "pH"
-                       ),
-                       dateRangeInput(inputId = 'daterange',
-                                      label = "Select dates:",
-                                      start = min(md2$SampleTime),
-                                      end = max(md2$SampleTime)-1,
-                                      min = min(md2$SampleTime), max = "2016-12-31",
-                                      separator = " to ", format = "mm/dd/yy",
-                                      startview = 'year', weekstart = 0
-                       )
+tabPanel( "Display Continuous Data",
+  fluidPage(
+    tabsetPanel(
+      tabPanel("Plots",
+               br(),
+               sidebarLayout(
+                 sidebarPanel(
+                   width = 3,
+                   # selectInput(
+                   #   inputId = "station_selection",
+                   #   label = "Select station:",
+                   #   choices = md2$Site
+                   # ),
+                   pickerInput(inputId = "station_selection", 
+                               label = h3("Select sites:"), 
+                               choices = list(
+                                 Estuarine = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)","34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)","10523-ORDEQ Nestucca R at Cloverdale", "13421-ORDEQ Wilson River at Hwy 101", "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
+                                 Freshwater = c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", "21800-ORDEQ Nestucca River at River Mile 38.57", "13428-ORDEQ Dougherty Slough at Hwy 101", "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", "29302-ORDEQ Nehalem River at Spruce Run Creek", "13368-ORDEQ Nehalem River at River Mile 15.0", "29292-ORDEQ Nehalem River at Salmonberry River")),
+                               multiple = FALSE),
+                   selectInput(
+                     inputId = "x",
+                     label = "x-axis",
+                     choices = names(md2),
+                     selected = "Sample Time"
+                   ),
+                   selectInput(
+                     inputId = "y2",
+                     label = "2nd y-axis",
+                     choices = names(md2),
+                     selected = "Temp"
+                   ),
+                   selectInput(
+                     inputId = "y3",
+                     label = "3rd y-axis",
+                     choices = names(md2),
+                     selected = "Conductivity"
+                   ),
+                   selectInput(
+                     inputId = "y4",
+                     label = "4th y-axis",
+                     choices = names(md2),
+                     selected = "pH"
+                   ),
+                   dateRangeInput(inputId = 'daterange',
+                                  label = "Select dates:",
+                                  start = min(md2$`Sample Time`),
+                                  end = max(md2$`Sample Time`)-1,
+                                  min = min(md2$`Sample Time`), max = "2016-12-31",
+                                  separator = " to ", format = "mm/dd/yy",
+                                  startview = 'year', weekstart = 0
+                   )
+                 ),
+                 mainPanel(
+                   fluidRow(
+                     column(8,
+                            wellPanel(
+                              plotlyOutput("subplot", height = 800)
+                            )
+                            
                      ),
-                     mainPanel(
-                       fluidRow(
-                         column(8,
-                                wellPanel(
-                                  plotlyOutput("subplot", height = 800)
-                                )
-                                
-                         ),
-                         column(4,
-                                wellPanel(
-                                  # hr(),
-                                  plotlyOutput("summaryplot"),
-                                  hr(),
-                                  DT::dataTableOutput("plot.summ")
-                                )
-                         )
-                         
-                         # ,
-                         # verbatimTextOutput("brush")
-                       )
-                     ))
-          ),
-          # ,
-          tabPanel("Data Selected From Graph, in a Table",
-                   # verbatimTextOutput("brush"),
-                   DT::dataTableOutput("graph_to_table"))
-        )
-      )
+                     column(4,
+                            wellPanel(
+                              # hr(),
+                              plotlyOutput("summaryplot"),
+                              hr(),
+                              DT::dataTableOutput("plot.summ")
+                            )
+                     )
+                     
+                     # ,
+                     # verbatimTextOutput("brush")
+                   )
+                 ))
+      ),
+      # ,
+      tabPanel("Data Selected From Graph, in a Table",
+               # verbatimTextOutput("brush"),
+               DT::dataTableOutput("graph_to_table"))
     )
+  )
+)
   )
 ) # End Fluid Page
 
@@ -309,18 +329,19 @@ server <- function(input, output, session) {
       addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>%
       addProviderTiles("CartoDB", group = "Carto") %>%
       addCircleMarkers(data = s,
-                 lat = ~Lat_DD,
-                 lng = ~Long_DD,
+                 lat = ~Lat,
+                 lng = ~Long,
                  color = ~pctcolor(pctbin),
                  radius = ~(n.y^(3/9)),
                  fillOpacity = 0.5,
-                 label = ~paste0("Station ID: ", MLocID, " ", StationDes),
+                 label = ~paste0("Station ID: ", MLocID, " ", `Station Description`),
                  labelOptions = labelOptions(textOnly = FALSE),
                  layerId = sd$MLocID) %>%
       addLegend("bottomright",
                 pal = pctcolor,
                 values = meets$pctbin,
-                title = "% All Samples Meeting Criteria") %>%
+                title = "Percent of Samples at a Site Meeting Criteria") %>%
+      addResetMapButton() %>% 
       addLayersControl(baseGroups = c("Esri Satellite Map",
                                       "Open Topo Map",
                                       "Carto"))
@@ -332,9 +353,9 @@ server <- function(input, output, session) {
     d <- s %>% 
       filter(MLocID == input$map_marker_click$id)
     
-    HTML(paste(tags$h4(d$StationDes),
+    HTML(paste(tags$h4(d$`Station Description`),
                "MLocID: ", d$MLocID, "<br/>",
-               "Lat/long: ", round(d$Lat_DD, 4), ", ", round(d$Long_DD, 4), "<br/>",
+               "Lat/long: ", round(d$Lat, 4), ", ", round(d$Long, 4), "<br/>",
                "River mile: ", round(d$RiverMile, 2), "<br/>",
                "Spawn dates: ", d$Spawn_dates, "<br/>",
                "Number of samples: ", scales::comma(d$n.x), "<br/>",
@@ -356,18 +377,21 @@ server <- function(input, output, session) {
 
 # table -------------------------------------------------------------------
   
+  maptabledata <- reactive({
+    md2 %>% 
+      select(input$checkboxtablesorter) %>% 
+      filter(MLocID == input$map_marker_click$id)
+  })
+  
   output$table <- DT::renderDataTable({
     shiny::validate(need(!is.null(input$map_marker_click$id),
                          "Click on a station on the map to view data", br()))
-    maptabledata <- md2 %>% 
-      select(input$checkboxtablesorter) %>% 
-      filter(MLocID == input$map_marker_click$id)
     DT::datatable(
-      data = maptabledata,
+      data = maptabledata(),
       style = 'bootstrap',
       extensions = 'Buttons',
       
-      options = list(dom = 'Bfrtip',
+      options = list(dom = 'Bfrtilp',
                      pageLength = 10,
                      compact = TRUE,
                      nowrap = TRUE,
@@ -377,8 +401,11 @@ server <- function(input, output, session) {
       rownames = FALSE,
       filter = 'bottom'
     ) %>% 
-      DT::formatDate("SampleTime", "toLocaleString")
-  })
+      DT::formatDate("Sample Time", "toLocaleString")
+    
+  }, server = FALSE)
+  
+
   
 
 ## mini nplot --------------------------------------------------------------
@@ -388,9 +415,9 @@ server <- function(input, output, session) {
                          "Click on a station on the map to view data"))
     md2 %>% 
       filter(MLocID == input$map_marker_click$id) %>% 
-      group_by(month = floor_date(SampleTime, "month")) %>% 
+      group_by(month = floor_date(`Sample Time`, "month")) %>% 
       mutate(n_samples = n()) %>% 
-      mutate(season = factor(month.abb[month(SampleTime)],
+      mutate(season = factor(month.abb[month(`Sample Time`)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
       plot_ly(x = ~month,
               y = ~n_samples,
@@ -400,7 +427,7 @@ server <- function(input, output, session) {
       layout(margin = list(b = 20),
              yaxis = list(title = 'Count'),
              xaxis = list(title = "Date",
-                          range = c(min(md2$SampleTime), max(md2$SampleTime))),
+                          range = c(min(md2$`Sample Time`), max(md2$`Sample Time`))),
              barmode = 'group')
   })  
   
@@ -408,10 +435,10 @@ server <- function(input, output, session) {
   # overview plots----- 
   n_sum <- reactive({
     md2 %>% 
-      select(MLocID, StationDes, Site, SampleTime, in_spawn, DO_lim, DO_status) %>% 
-      group_by(month = floor_date(SampleTime, "month")) %>% 
+      select(MLocID, `Station Description`, Site, `Sample Time`, in_spawn, DO_lim, DO_status) %>% 
+      group_by(month = floor_date(`Sample Time`, "month")) %>% 
       mutate(n_samples = n()) %>% 
-      mutate(season = factor(month.abb[month(SampleTime)],
+      mutate(season = factor(month.abb[month(`Sample Time`)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct")))
   })
 
@@ -419,7 +446,7 @@ server <- function(input, output, session) {
 # summary --------------------------------------------------------
 n2 <- reactive({
 n_sum() %>%
-    group_by(MLocID, month, StationDes, Site, in_spawn, DO_lim, DO_status) %>% 
+    group_by(MLocID, month, `Station Description`, Site, in_spawn, DO_lim, DO_status) %>% 
     summarise(n = n()) %>% 
     ungroup() %>% 
     spread(DO_status, n, fill = 0) %>% 
@@ -433,7 +460,7 @@ n_sum() %>%
     )
 })
   
-  output$nstackplot <- renderPlotly({
+  output$nsummaryplot <- renderPlotly({
 
     plot_ly(n2(),
             x = ~get(input$plottype)) %>% 
@@ -472,8 +499,8 @@ n_sum() %>%
    req(input$SiteCheckGroup)
    
    md2 %>%
-     select(MLocID, SampleTime, DO, Site, StationDes) %>% 
-     group_by(MLocID, Site, StationDes, month.p = floor_date(SampleTime, "month")) %>% 
+     select(MLocID, `Sample Time`, DO, Site) %>% 
+     group_by(MLocID, Site, month.p = floor_date(`Sample Time`, "month")) %>% 
      filter(Site %in% input$SiteCheckGroup) %>% 
      summarize(min = min(DO))
  })
@@ -484,7 +511,7 @@ n_sum() %>%
     plot_ly(wdi(),
             x = ~month.p,
             y = ~min,
-            text = ~paste('Site:', StationDes),
+            text = ~paste("Site:", Site),
             color = ~Site,
             colors = pal,
             # colors = coul,
@@ -492,7 +519,7 @@ n_sum() %>%
             type = "scatter",
             marker = list(size = 10,
                           line = list(color = "#000000",
-                                      width = 0.2),
+                                      width = 0.4),
                           alpha = 0.8)) %>%
       layout(showlegend = FALSE,
              margin = marginlist,
@@ -512,10 +539,10 @@ n_sum() %>%
   
   boxplotdata <-  reactive({
     md2 %>% 
-      mutate(month = floor_date(SampleTime, "month")) %>%
-      mutate(season = factor(month.abb[month(SampleTime)],
+      mutate(month = floor_date(`Sample Time`, "month")) %>%
+      mutate(season = factor(month.abb[month(`Sample Time`)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
-      mutate(year = factor(year(floor_date(SampleTime, "year")))) %>%
+      mutate(year = factor(year(floor_date(`Sample Time`, "year")))) %>%
       filter(crit_Instant == input$boxplotradio) %>%
       filter(Site %in% c(input$boxplotfreshsites, input$boxplotestsites))
   })
@@ -528,7 +555,7 @@ n_sum() %>%
             color = ~get(input$boxplotgroup),
             # colors = viridis_pal(option = "D")(5), 
             type = "box",
-            text = ~paste('Site: ', StationDes,
+            text = ~paste('Site: ', `Station Description`,
                           "<br>", DO_lim)) %>%
       layout(boxmode = "group",
              xaxis = list(title = toTitleCase(input$boxplotx)))
@@ -541,7 +568,7 @@ n_sum() %>%
   stations_subset <- reactive({
     req(input$station_selection)
     md2 %>% filter(Site %in% input$station_selection) %>% 
-      select(-c(Lat_DD, Long_DD, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site))
+      select(-c(Lat, Long, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site))
   })
   
   output$subsetscatter <- renderPlotly({
@@ -563,13 +590,20 @@ n_sum() %>%
             type = "scatter")
   })
 
-# DO Subplot -----------------------------------------------------------------
-
+# Multi-plot -----------------------------------------------------------------
+# This plot contains multiple y axes that share the `Sample Time` axis
+  
+  
   output$subplot <- renderPlotly({
-    DO_pal <- c("#000000", "#325C62", "#F4A767")
+    shiny::validate(
+      need(input$station_selection,
+      "Select a station to the left to view data"))
+    
+    DO_pal <- c("#000000", "#325C62", "#DB532A")
     DO_pal <- setNames(DO_pal, c("DO", "Meets criteria", "Excursion"))
     
-    req(stations_subset())
+    # req(stations_subset())
+    
     
     a <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
@@ -636,7 +670,21 @@ n_sum() %>%
           )
         # ,
         # autosize = FALSE, width = 1000, height = 800
-        )
+        ) %>% 
+      config(displaylogo = FALSE,
+             collaborate = FALSE,
+             modeBarButtonsToRemove = list(
+               'sendDataToCloud',
+               # 'zoom2d',
+               'pan2d',
+               # 'select2d',
+               # 'lasso2d',
+               'zoomIn2d',
+               'zoomOut2d',
+               'autoScale2d',
+               # 'resetScale2d',
+               'toggleSpikelines'
+             ))
   } )
 
 # graph to table ----------------------------------------------------------
@@ -647,11 +695,14 @@ n_sum() %>%
     event.data <- event_data("plotly_selected", source = "A")
     if (is.null(event.data)) return(NULL)
     
-    Meets_criteria <- subset(stations_subset(),
-                             DO_status == "Meets criteria")[subset(event.data, curveNumber == 2)$pointNumber + 1,]
-    Excursion <- subset(stations_subset(),
-                        DO_status == "Excursion")[subset(event.data,
-                                                         curveNumber == 1)$pointNumber + 1,]
+    Meets_criteria <- subset(
+      stations_subset(),
+      DO_status == "Meets criteria")[subset(event.data,
+                                            curveNumber == 2)$pointNumber + 1,]
+    Excursion <- subset(
+      stations_subset(),
+      DO_status == "Excursion")[subset(event.data,
+                                       curveNumber == 1)$pointNumber + 1,]
     
     plot.subset <- rbind(Meets_criteria, Excursion)
     
@@ -685,7 +736,7 @@ n_sum() %>%
       rownames = FALSE,
       filter = 'top'
     ) %>% 
-      DT::formatDate("SampleTime", "toLocaleString")
+      DT::formatDate("Sample Time", "toLocaleString")
     
   })
   
@@ -696,6 +747,9 @@ n_sum() %>%
 # plotly summary bar plot -------------------------------------------------------
 
   output$summaryplot <- renderPlotly({
+    shiny::validate(
+      need(plot.subset(),
+           "Select a station to the left to view data"))
     
     req(plot.subset())
     
@@ -703,6 +757,7 @@ n_sum() %>%
             x = ~DO_status,
             y = ~Count,
             type = "bar",
+            name = ~DO_status,
             color = ~color_map[DO_status]) %>%
       layout(title = "Count",
              paper_bgcolor = "#ecf0f1"
