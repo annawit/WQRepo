@@ -1,0 +1,13 @@
+name: WQRepo
+title: WQRepo
+username:
+account: awithington
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 873447
+bundleId: 2019932
+url: https://awithington.shinyapps.io/WQRepo/
+when: 1555543259.79786
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: DO_crit.csv|dosatsample.csv|FinalDataPrep.R|leaflettests.R|plotly subplot example.R|rangefinder.R|README.md|ShinyAllData.Rdata|tablesample.csv|TEP_StationsInfo_Anna.csv|Tests.R|Archive

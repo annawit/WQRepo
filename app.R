@@ -17,12 +17,11 @@ library(leaflet.extras)
 # Data -------------------------------------------------------
 
 
-load("dataforwqapp.Rdata")
+load("data/dataforwqapp.Rdata")
 
 
 
 md2 <- dta1 %>% 
-  mutate(DO_status = ifelse(DO_status == 0, "Excursion", "Meets criteria")) %>% 
   rename(`Station Description` = StationDes,
          `Sample Time` = datetime,
          Temp = temp,
@@ -37,30 +36,27 @@ md2 <- dta1 %>%
          `DO Sat Grade` = grade_do_sat,
          `Data Source` = data_source,
          Lat = Lat_DD,
-         Long = Long_DD)
+         Long = Long_DD,
+         Type = MonLocType)
 
-#gives percent meeting criteria at each site
+#gives percent meeting criteria at each site for leaflet map
 meets <- md2 %>% 
-  group_by(MLocID, DO_status) %>% 
-  count() %>% 
-  group_by(MLocID) %>% 
-  mutate(pctmeets = n/sum(n)) %>% 
-  filter(DO_status == "Meets criteria") %>% 
+  group_by(MLocID, DO_status) %>%
+  count() %>%
+  group_by(MLocID) %>%
+  mutate(pctmeets = n/sum(n)) %>%
+  filter(DO_status == "Meets criteria") %>%
   mutate(pctbin = cut(pctmeets, c(0, 0.5, 0.99, 1),
-                      include.lowest = TRUE, labels = c("Less than 50%", "50%-99%", "Greater than 99%"))) 
+                      include.lowest = TRUE,
+                      labels = c("Fewer than 50% meet criteria",
+                                 "50%-99% meet criteria",
+                                 "Greater than 99% meet criteria")))
 
 pctcolor <- colorFactor(palette = "RdYlGn", meets$pctbin)
 
-plot <- ggplot(data = meets, aes(x = MLocID, y = pctmeets, fill = DO_status)) +
-  geom_bar(stat = 'identity', position = 'dodge')
+load("data/sitesummary.Rdata")
 
-load("sitesummary.Rdata")
-sd <- sites%>% 
-  rename(`Station Description` = StationDes,
-         Lat = Lat_DD,
-         Long = Long_DD)
-
-s <- left_join(sd, meets, by = "MLocID")
+s <- left_join(sites, meets, by = "MLocID")
 
 marginlist <- list(
   l = 60,
@@ -69,8 +65,6 @@ marginlist <- list(
   t = 20,
   pad = 8
 )
-# pal <- c("red", "blue", "green")
-# pal <- setNames(pal, c("virginica", "setosa", "versicolor"))
 
 pal <- viridis_pal(option = "D", direction = -1)(14)
 pal <- setNames(pal, unique(md2$Site))
@@ -103,7 +97,7 @@ tabPanel("Select from map",
                uiOutput("youhavechosen"),
                # hr adds a subtle line and space in the UI
                hr(),
-               # this is the summary bar plot
+               # this is the sample counts bar plot
                plotlyOutput("mininplot")),
              wellPanel(
                # These are the table columns selector
@@ -116,32 +110,35 @@ tabPanel("Select from map",
                               "Station Description"))),
              wellPanel(
                HTML("Select a station and variables,
-                                             then hit 'Download data'."),
+                    then hit 'Download data'."),
                hr(),
                downloadButton(
+                 # rest of the code in the server
                  outputId = "download_data",
                  label = "Download table data")
-             )),
+             )
+           ),
            mainPanel(
              wellPanel(leafletOutput("map")),
              wellPanel(DT::dataTableOutput("table"),
                        br(),
                        br())
            )
-           
-         )),
+         )
+         ), #end "Select from map" panel
     
 # Overview plots --------------------------------------------------------------
 tabPanel("Overview Plots",
 # Sample summary ------------------------------------------------------------
-tabsetPanel(
+tabsetPanel( #creates panels inside of "Overview plots"
   tabPanel("Sample summary",
-           br(),
+           br(), # a space to make it pretty
            sidebarLayout(
              sidebarPanel(
-               width = 3,
+               width = 3, # makes the sidebar panel smaller to make the plot bigger
                selectInput(inputId = "plottype",
                            "Select:", 
+                           # "What the user sees in the menu" = "the column in the data"
                            choices = c("By time" = "month",
                                        "By site" = "MLocID",
                                        "By spawning" = "Spawning",
@@ -149,6 +146,9 @@ tabsetPanel(
                )),
              mainPanel(
                wellPanel(
+                 # this is the sample summary plot
+                 # it shows number of samples that meet criteria/are excursions
+                 # a lot more user selection could be added here
                  plotlyOutput("nsummaryplot", height = 500)
                )
              )
@@ -160,24 +160,23 @@ tabsetPanel(
            sidebarLayout(
              sidebarPanel(
                width = 3,
-               # selectInput("SiteCheckGroup", 
-               #             label = h3("Sites"), 
-               #             choices = unique(md2$Site),
-               #             selected = max(unique(md2$Site)),
-               #             multiple = TRUE),
                pickerInput(inputId = "SiteCheckGroup", 
                            label = h3("Select sites:"), 
                            choices = list(
+                             # This creates sub-lists in the dropdown menu
+                             # I'm sorry for this hacky way I did this
+                             # If I have time I'll come back and fix it
                              Estuarine = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)","34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)","10523-ORDEQ Nestucca R at Cloverdale", "13421-ORDEQ Wilson River at Hwy 101", "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
                              Freshwater = c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", "21800-ORDEQ Nestucca River at River Mile 38.57", "13428-ORDEQ Dougherty Slough at Hwy 101", "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", "29302-ORDEQ Nehalem River at Spruce Run Creek", "13368-ORDEQ Nehalem River at River Mile 15.0", "29292-ORDEQ Nehalem River at Salmonberry River")
                            ),
-                           selected = unique(md2$Site),
+                           selected = "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)",
                            multiple = TRUE
                )
              ),
              mainPanel(
                width = 9,
                wellPanel(
+                 # writes text directly into the interface at heading 4 size
                  h4("Minimum DO at a given site for a given sampling window"),
                  plotlyOutput("mindoplot", height = 500)
                )
@@ -192,39 +191,51 @@ tabsetPanel(
            sidebarLayout(
              sidebarPanel(
                width = 3,
-               selectInput("boxplotx",
-                           "Select x-axis:",
-                           choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
+               selectInput("boxplotx", # shiny id to use in other places
+                           "Select x-axis:", # label the user sees
+                           choices = c("Site" = "MLocID", # options
+                                       "Season" = "season", # "Pretty for the User" = "colName"
+                                       "Year" = "year")
+                           ), 
+               
                selectInput("boxplotgroup",
                            "Select color:",
-                           choices = c("Site" = "MLocID", "Season" = "season", "Year" = "year")),
-               radioButtons("boxplotradio",
-                            "Water body type",
-                            c("Estuary sites" = "6.5",
+                           choices = c("Site" = "MLocID",
+                                       "Season" = "season",
+                                       "Year" = "year")),
+               radioButtons("boxplotradio", # shiny id to use in other places
+                            "Water body type", # label the user sees
+                            c("Estuary sites" = "6.5", # "Pretty for the User" = "colName"
                               "Freshwater sites" = "8")),
                pickerInput(inputId = "boxplotestsites", 
-                           label = h3("Select sites:"), 
+                           label = "Select sites:", 
                            choices = list(
-                             Estuarine = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)","34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)","10523-ORDEQ Nestucca R at Cloverdale", "13421-ORDEQ Wilson River at Hwy 101", "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
-                             Freshwater = c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", "21800-ORDEQ Nestucca River at River Mile 38.57", "13428-ORDEQ Dougherty Slough at Hwy 101", "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", "29302-ORDEQ Nehalem River at Spruce Run Creek", "13368-ORDEQ Nehalem River at River Mile 15.0", "29292-ORDEQ Nehalem River at Salmonberry River")
+                             Estuarine = 
+                               c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
+                                 "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
+                                 "10523-ORDEQ Nestucca R at Cloverdale", 
+                                 "13421-ORDEQ Wilson River at Hwy 101", 
+                                 "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
+                             Freshwater = 
+                               c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", 
+                                 "21800-ORDEQ Nestucca River at River Mile 38.57", 
+                                 "13428-ORDEQ Dougherty Slough at Hwy 101", 
+                                 "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", 
+                                 "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", 
+                                 "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", 
+                                 "29302-ORDEQ Nehalem River at Spruce Run Creek", 
+                                 "13368-ORDEQ Nehalem River at River Mile 15.0", 
+                                 "29292-ORDEQ Nehalem River at Salmonberry River")
                            ),
                            selected = unique(md2$Site),
                            multiple = TRUE
                            )
-               # selectInput("boxplotfreshsites", 
-               #             label = h3("Select sites"), 
-               #             choices = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
-               #             selected = unique(md2 %>% filter(crit_Instant == "8") %>% select(Site)),
-               #             multiple = TRUE)
              ),
              mainPanel(
                width = 9,
                wellPanel(
                  plotlyOutput("summaryboxplot")
                )
-               # ,
-               # plotlyOutput("summaryboxplot2"),
-               # plotlyOutput("summaryboxplot3")
              )
            )
   ))
@@ -240,45 +251,65 @@ tabPanel( "Display Continuous Data",
                sidebarLayout(
                  sidebarPanel(
                    width = 3,
-                   # selectInput(
-                   #   inputId = "station_selection",
-                   #   label = "Select station:",
-                   #   choices = md2$Site
-                   # ),
                    pickerInput(inputId = "station_selection", 
                                label = h3("Select sites:"), 
                                choices = list(
-                                 Estuarine = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)","34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)","10523-ORDEQ Nestucca R at Cloverdale", "13421-ORDEQ Wilson River at Hwy 101", "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
-                                 Freshwater = c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", "21800-ORDEQ Nestucca River at River Mile 38.57", "13428-ORDEQ Dougherty Slough at Hwy 101", "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", "29302-ORDEQ Nehalem River at Spruce Run Creek", "13368-ORDEQ Nehalem River at River Mile 15.0", "29292-ORDEQ Nehalem River at Salmonberry River")),
+                                 Estuarine = 
+                                   c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
+                                     "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
+                                     "10523-ORDEQ Nestucca R at Cloverdale", 
+                                     "13421-ORDEQ Wilson River at Hwy 101", 
+                                     "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
+                                 Freshwater = 
+                                   c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", 
+                                     "21800-ORDEQ Nestucca River at River Mile 38.57", 
+                                     "13428-ORDEQ Dougherty Slough at Hwy 101", 
+                                     "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", 
+                                     "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", 
+                                     "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", 
+                                     "29302-ORDEQ Nehalem River at Spruce Run Creek", 
+                                     "13368-ORDEQ Nehalem River at River Mile 15.0", 
+                                     "29292-ORDEQ Nehalem River at Salmonberry River")
+                               ),
                                multiple = FALSE),
                    selectInput(
-                     inputId = "x",
-                     label = "x-axis",
-                     choices = names(md2),
-                     selected = "Sample Time"
+                     inputId = "x", # the shiny id to use other places
+                     label = "X-axis", # what the user sees in the UI
+                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
+                                "pH Grade",
+                                "Conductivity",
+                                "Conductivity Grade",
+                                "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
+                     selected = "Sample Time" # what I want it to start on by default
                    ),
                    selectInput(
                      inputId = "y2",
                      label = "2nd y-axis",
-                     choices = names(md2),
+                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
+                                 "pH Grade", "Conductivity", "Conductivity Grade",
+                                 "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
                      selected = "Temp"
                    ),
                    selectInput(
                      inputId = "y3",
                      label = "3rd y-axis",
-                     choices = names(md2),
+                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
+                                 "pH Grade", "Conductivity", "Conductivity Grade",
+                                 "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
                      selected = "Conductivity"
                    ),
                    selectInput(
                      inputId = "y4",
                      label = "4th y-axis",
-                     choices = names(md2),
+                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
+                                 "pH Grade", "Conductivity", "Conductivity Grade",
+                                 "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
                      selected = "pH"
                    ),
                    dateRangeInput(inputId = 'daterange',
                                   label = "Select dates:",
                                   start = min(md2$`Sample Time`),
-                                  end = max(md2$`Sample Time`)-1,
+                                  end = max(md2$`Sample Time`) - 1,
                                   min = min(md2$`Sample Time`), max = "2016-12-31",
                                   separator = " to ", format = "mm/dd/yy",
                                   startview = 'year', weekstart = 0
@@ -288,33 +319,36 @@ tabPanel( "Display Continuous Data",
                    fluidRow(
                      column(8,
                             wellPanel(
-                              plotlyOutput("subplot", height = 800)
+                              # subplot is the large plot with four panels
+                              # on the display continuous data page
+                              plotlyOutput("subplot", height = 800),
+                              DT::dataTableOutput("stations_subset")
                             )
-                            
                      ),
                      column(4,
                             wellPanel(
-                              # hr(),
-                              plotlyOutput("summaryplot"),
+                              # the mini plot that pops up when the subplot
+                              # to the left is selected
+                             plotlyOutput("summaryplot"),
                               hr(),
+                             # a mini table that summarizes number of samples 
+                             #meeting /not meeting criteria and %
                               DT::dataTableOutput("plot.summ")
                             )
                      )
-                     
-                     # ,
-                     # verbatimTextOutput("brush")
                    )
                  ))
       ),
       # ,
       tabPanel("Data Selected From Graph, in a Table",
-               # verbatimTextOutput("brush"),
+               # when the data on the subplot is selected, the data in this tab
+               # is populated
                DT::dataTableOutput("graph_to_table"))
     )
   )
 )
   )
-) # End Fluid Page
+) # End Fluid Page & UI
 
 # Server ------------------------------------------------------------------
 server <- function(input, output, session) {
@@ -332,11 +366,13 @@ server <- function(input, output, session) {
                  lat = ~Lat,
                  lng = ~Long,
                  color = ~pctcolor(pctbin),
-                 radius = ~(n.y^(3/9)),
+                 radius = ~(n.y^(3/9)), #takes the cube root of the number of samples
+                 # in order to size the circles properly
+                 # i left it as 3/9 in case they needed to be resized in the future
                  fillOpacity = 0.5,
                  label = ~paste0("Station ID: ", MLocID, " ", `Station Description`),
                  labelOptions = labelOptions(textOnly = FALSE),
-                 layerId = sd$MLocID) %>%
+                 layerId = s$MLocID) %>%
       addLegend("bottomright",
                 pal = pctcolor,
                 values = meets$pctbin,
@@ -348,11 +384,13 @@ server <- function(input, output, session) {
   })
   
   output$youhavechosen <- renderUI({
-    req(input$map_marker_click$id)
+    req(input$map_marker_click$id) #intended to suppress errors
     
+    #filters the sites based on the leaflet map click
     d <- s %>% 
       filter(MLocID == input$map_marker_click$id)
     
+    #prints out station information based on the map click
     HTML(paste(tags$h4(d$`Station Description`),
                "MLocID: ", d$MLocID, "<br/>",
                "Lat/long: ", round(d$Lat, 4), ", ", round(d$Long, 4), "<br/>",
@@ -361,13 +399,17 @@ server <- function(input, output, session) {
                "Number of samples: ", scales::comma(d$n.x), "<br/>",
                "Percent of all samples meeting criteria: ", round(d$pctmeets*100), "%"
                ))
-    
-    
+
   })
   
+  
+  #download button on the first page
   output$download_data <- downloadHandler(
-    filename = "ShinyDataTableDownload.csv",
+    
+    filename = "ShinyDataTableDownload.csv", #name the user sees when they download
     content = function(file) {
+      #sends data filtered by the column selector checkboxes
+      #and filtered by site from the map click
       m <- md2 %>%
         select(input$checkboxtablesorter) %>%
         filter(MLocID == input$map_marker_click$id)
@@ -567,8 +609,14 @@ n_sum() %>%
   
   stations_subset <- reactive({
     req(input$station_selection)
+    m <- paste0("Conductivity in ", intToUtf8(0x03BC), "S")
     md2 %>% filter(Site %in% input$station_selection) %>% 
-      select(-c(Lat, Long, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site))
+      select(-c(Lat, Long, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site)) %>% 
+      mutate(paste0("Conductivity in ", intToUtf8(0x03BC), "S") = Conductivity)
+  })
+  
+ output$stations_subset <- DT::renderDataTable({
+    stations_subset()
   })
   
   output$subsetscatter <- renderPlotly({
@@ -602,9 +650,7 @@ n_sum() %>%
     DO_pal <- c("#000000", "#3182bd", "#DB532A")
     DO_pal <- setNames(DO_pal, c("DO", "Meets criteria", "Excursion"))
     
-    # req(stations_subset())
-    
-    
+
     a <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
                  y = ~DO,
@@ -638,7 +684,7 @@ n_sum() %>%
                  name = toTitleCase(input$y3),
                  title = toTitleCase(input$y3),
                  marker = list(color = "#49805F"),
-                 type = "scattergl") %>% 
+                 type = "scatter") %>% 
       layout(
         yaxis = list(
           title = input$y3
@@ -650,7 +696,7 @@ n_sum() %>%
                  name = toTitleCase(input$y4),
                  title = toTitleCase(input$y4),
                  marker = list(color = "#959B4F"),
-                 type = "scattergl") %>% 
+                 type = "scatter") %>% 
       layout(
         yaxis = list(
           title = toTitleCase(input$y4)

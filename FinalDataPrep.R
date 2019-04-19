@@ -1,27 +1,34 @@
 # 1/30/2019 Joins for DO rules --------------------------------------------
+# revised 4/19/2019
+# Anna Withington
+# anna.withington@gmail.com
+
 library(tidyverse)
 library(lubridate)
 
 #original data, called dta2
-load("ShinyAllData.Rdata")
+load("data/ShinyAllData.Rdata")
 
 # stations list with geodata from Lesley Merrick
-stations <- read_csv("TEP_StationsInfo_anna.csv")
+stations <- read_csv("data/TEP_StationsInfo_anna.csv")
 
 # the DO lookup table, from Travis Pritchard
-DO_lvls <- read_csv("DO_crit.csv")
+DO_lvls <- read_csv("data/DO_crit.csv")
+# Note: some revisions are handcoded below.
 
 # spawning dates, also from Lesley Merrick.
 # dates may come in in weird format
-spn <- read_csv("IRDatabase_CriteriaTables.csv")
+spn <- read_csv("data/IRDatabase_CriteriaTables.csv")
 
-#removes stations without a lasar id, might have to be remedied later
+#removes stations without a lasar/MLocID id
+#we are waiting for these to get coded
 #refers specifically to two TEP sampling sites
 dta3 <- dta2 %>% 
   filter(!is.na(lasar_id))
 
 #join the station list to the spawn codes
 spawnjoin <- left_join(stations, spn, by = c("SpawnCode" = "SpawnCode"))
+# started with 14 stations, ended with 14 stations
 
 # change station keys to factors for join with dta3
 spawnjoin$station_key <- as.factor(spawnjoin$station_key)
@@ -62,35 +69,48 @@ DO_base <- left_join(dataspawn, DO_lvls, by = "DO_code")
 # allowed pass for greater than OR EQUAL TO.
 
 dtasp <- DO_base %>% 
-  mutate(SpawnStart = ifelse(!is.na(SpawnStart) & SpawnStart != "NULL", paste0(SpawnStart, "/", year(datetime) ), SpawnStart ),
-         SpawnEnd = ifelse(!is.na(SpawnEnd) & SpawnEnd != "NULL", paste0(SpawnEnd, "/", year(datetime)), SpawnEnd),
-         SpawnStart = mdy(SpawnStart),
-         SpawnEnd = mdy(SpawnEnd),
+  mutate(SpawnStart = ifelse(!is.na(SpawnStart) & SpawnStart != "NULL", paste0(SpawnStart, "-", year(datetime) ), SpawnStart ),
+         SpawnEnd = ifelse(!is.na(SpawnEnd) & SpawnEnd != "NULL", paste0(SpawnEnd, "-", year(datetime)), SpawnEnd),
+         SpawnStart = dmy(SpawnStart),
+         SpawnEnd = dmy(SpawnEnd),
          SpawnEnd = if_else(SpawnEnd < SpawnStart, SpawnEnd + years(1), SpawnEnd),
+         #if the datetime is between spawnstart and spawn and and spawnstart is not NA,
+         # code in_spawn column as 1. in other words, 1 means you are in the spawning season
+         # zero means you are not in the spawning season
          in_spawn = ifelse(datetime >= SpawnStart & datetime <= SpawnEnd & !is.na(SpawnStart), 1, 0 ),
+         #if you're in the spawning season, your DO limit is 11,
+         #otherwise your DO limit is whatever the crit instant says it is
          DO_lim = ifelse(in_spawn == 1, 11, crit_Instant),
-         DO_status = ifelse(do < DO_lim, 0,
-                            ifelse(do >= DO_lim, 1, "other")))
-#results in a "failed to parse warning" - this should be ok
+         # if your DO is below the limit, excursion
+         # if your DO is above or equal to the limit, it meets the criteria
+         DO_status = ifelse(do < DO_lim, "Excursion",
+                            ifelse(do >= DO_lim, "Meets criteria", "other")))
+#results in a "failed to parse warning" for around 49k records
+#this is because those don't have spawn dates. it should be ok but double check
+#to make sure the columns were correctly generated
 
 summary(as.factor(dtasp$DO_status))
+# check results
 # results in NAs, these items have DO sat only
+# no "other"
 
-#example table for York
-# d <- dtasp[1:6,]
-# write.csv(d, "tablesample.csv")
+
 
 names(dtasp)
 names(dta1)
 
 sites <- dtasp %>%
   group_by(MLocID, StationDes, Lat_DD, Long_DD, LLID, RiverMile, Spawn_dates) %>% 
-  count()
+  count() %>% 
+  rename(`Station Description` = StationDes,
+         Lat = Lat_DD,
+         Long = Long_DD)
 
+#removes columns with DO sat only
 #removes columns we don't need in the continuous data
 dtasp1 <- dtasp %>% 
   filter(!is.na(DO_status)) %>% 
-  select(-c(lasar_id, Datum, CollMethod, MapScale, AU_ID, MonLocType,
+  select(-c(lasar_id, Datum, CollMethod, MapScale, AU_ID,
             Comments, STATE, COUNTY, T_R_S, EcoRegion3, EcoRegion4, HUC4_Name,
             HUC6_Name, HUC8_Name, HUC10_Name, HUC12_Name, HUC8, HUC10, HUC12,
             ELEV_Ft, GNIS_Name, Reachcode, Measure, SnapDate, ReachRes,
@@ -105,15 +125,6 @@ dta1 <- dtasp1 %>%
   filter(!is.na(datetime)) %>% 
   mutate(Site = paste(MLocID, StationDes))
 
-save(dta1, file = "dataforwqapp.RData")
-save(sites, file = "sitesummary.RData")
-
-# ddd <- dtasp %>% 
-#   group_by(month = floor_date(datetime, "month")) %>% 
-#   mutate(n_samples = n()) %>% 
-#   mutate(season = factor(month.abb[month(datetime)],
-#                          levels = c("May", "Jun", "Jul", "Aug", "Oct")))
-
-
-dta1
+save(dta1, file = "data/dataforwqapp.RData")
+save(sites, file = "data/sitesummary.RData")
 
