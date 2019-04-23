@@ -10,7 +10,7 @@ library(lubridate)
 load("data/ShinyAllData.Rdata")
 
 # stations list with geodata from Lesley Merrick
-stations <- read_csv("data/TEP_StationsInfo_anna.csv")
+stations <- read_csv("data/TEP_StationsInfo.csv")
 
 # the DO lookup table, from Travis Pritchard
 DO_lvls <- read_csv("data/DO_crit.csv")
