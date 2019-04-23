@@ -9,7 +9,6 @@ library(shinyWidgets)
 library(shinythemes)
 library(viridis)
 library(RColorBrewer)
-# library(rgdal)
 library(tools)
 library(leaflet.extras)
 
@@ -61,13 +60,13 @@ displaysites <- sites %>% select(-c(Lat, Long, LLID, n))
 
 s <- left_join(sites, meets, by = "MLocID")
 
-# marginlist <- list(
-#   l = 60,
-#   r = 20, 
-#   b = 50,
-#   t = 20,
-#   pad = 8
-# )
+marginlist <- list(
+  l = 60,
+  r = 20,
+  b = 50,
+  t = 20,
+  pad = 8
+)
 
 pal <- viridis_pal(option = "D", direction = -1)(14)
 pal <- setNames(pal, unique(md2$Site))
