@@ -19,7 +19,7 @@ library(leaflet.extras)
 load("data/dataforwqapp.Rdata")
 
 
-
+# this can be moved into the FinalDataPrep script once it's final
 md2 <- dta1 %>% 
   rename(`Station Description` = StationDes,
          `Sample Time` = datetime,
@@ -38,7 +38,7 @@ md2 <- dta1 %>%
          Long = Long_DD,
          Type = MonLocType)
 
-#gives percent meeting criteria at each site for leaflet map
+# gives percent meeting criteria at each site for leaflet map
 meets <- md2 %>% 
   group_by(MLocID, DO_status) %>%
   count() %>%
@@ -51,12 +51,17 @@ meets <- md2 %>%
                                  "50%-99% meet criteria",
                                  "Greater than 99% meet criteria")))
 
+# colors for leaflet
 pctcolor <- colorFactor(palette = "RdYlGn", meets$pctbin)
 
 #creates object called "sites"
 load("data/sitesummary.Rdata")
 
+# this was to create a display table for the summary plots
+# It was created at the bottom of the server 
+# but not added into the UI (a good beginner Shiny task)
 displaysites <- sites %>% select(-c(Lat, Long, LLID, n))
+
 
 s <- left_join(sites, meets, by = "MLocID")
 
@@ -68,14 +73,17 @@ marginlist <- list(
   pad = 8
 )
 
+# some color setting, needs to be adjusted
 pal <- viridis_pal(option = "D", direction = -1)(14)
 pal <- setNames(pal, unique(md2$Site))
 
 
-#colors
+# more colors
 coul <- colorRampPalette(brewer.pal(9, "Set3"))(14)
 sitecol <- viridis_pal(option = "D")(14)
 
+
+# some of this might have been superceded, I didn't have time to check/remove everything
 color_map <- c("Meets criteria" = "#F4A767", "Excursion" = "#DB532A")
 DO_status_levels <- c("Meets criteria", "Excursion")
 DO_status_colors <- c("#F4A767", "#DB532A")
@@ -84,9 +92,10 @@ names(DO_status_colors) <- DO_status_levels
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+  # this adds in a custom UI theme that can be changed
   theme = shinythemes::shinytheme("flatly"),
-  navbarPage(
-    "Continuous Dissolved Oxygen Visualizer",
+  
+  navbarPage("Continuous Dissolved Oxygen Visualizer",
     
 # Select from map --------------------------------------------------------------
 tabPanel("Select from map",
@@ -205,10 +214,11 @@ tabsetPanel( #creates panels inside of "Overview plots"
                            choices = c("Site" = "MLocID",
                                        "Season" = "season",
                                        "Year" = "year")),
-               radioButtons("boxplotradio", # shiny id to use in other places
-                            "Water body type", # label the user sees
-                            c("Estuary sites" = "6.5", # "Pretty for the User" = "colName"
-                              "Freshwater sites" = "8")),
+               # I took this out because I couldn't get it linked with the dropdown menu in time
+               # radioButtons("boxplotradio", # shiny id to use in other places
+               #              "Water body type", # label the user sees
+               #              c("Estuary sites" = "6.5", # "Pretty for the User" = "colName"
+               #                "Freshwater sites" = "8")),
                pickerInput(inputId = "boxplotestsites", 
                            label = "Select sites:", 
                            choices = list(
@@ -229,7 +239,11 @@ tabsetPanel( #creates panels inside of "Overview plots"
                                  "13368-ORDEQ Nehalem River at River Mile 15.0", 
                                  "29292-ORDEQ Nehalem River at Salmonberry River")
                            ),
-                           selected = unique(md2$Site),
+                           selected = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
+                                        "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
+                                        "10523-ORDEQ Nestucca R at Cloverdale", 
+                                        "13421-ORDEQ Wilson River at Hwy 101", 
+                                        "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
                            multiple = TRUE
                            )
              ),
@@ -372,7 +386,7 @@ server <- function(input, output, session) {
                  radius = ~(n.y^(3/9)), #takes the cube root of the number of samples
                  # in order to size the circles properly
                  # i left it as 3/9 in case they needed to be resized in the future
-                 fillOpacity = 0.5,
+                 fillOpacity = 0.5, # transparent for overlap
                  label = ~paste0("Station ID: ", MLocID, " ", `Station Description`),
                  labelOptions = labelOptions(textOnly = FALSE),
                  layerId = s$MLocID) %>%
@@ -423,15 +437,17 @@ server <- function(input, output, session) {
 
 # table -------------------------------------------------------------------
   
+  #this creates a reactive dataframe that is referred to other places as maptabledata()
   maptabledata <- reactive({
     md2 %>% 
       select(input$checkboxtablesorter) %>% 
       filter(MLocID == input$map_marker_click$id)
   })
   
+  # this creates a DT table to put in the UI that would be called with DT::dataTableOutput("table")
   output$table <- DT::renderDataTable({
-    shiny::validate(need(!is.null(input$map_marker_click$id),
-                         "Click on a station on the map to view data", br()))
+    shiny::validate(need(!is.null(input$map_marker_click$id), #supresses errors
+                         "Click on a station on the map to view data", br())) #displays text until click
     DT::datatable(
       data = maptabledata(),
       style = 'bootstrap',
@@ -456,6 +472,7 @@ server <- function(input, output, session) {
 
 ## mini nplot --------------------------------------------------------------
 
+  # creates a UI object that is called in the ui with "plotlyOutput("mininplot")
   output$mininplot <- renderPlotly({
     shiny::validate(need(!is.null(input$map_marker_click$id),
                          "Click on a station on the map to view data"))
@@ -496,6 +513,9 @@ server <- function(input, output, session) {
 
 
 # summary --------------------------------------------------------
+  
+  # creates a reactive dataframe, n2(), for a dynamic plot
+  # this has some remnant stuff that should be revised
 n2 <- reactive({
 n_sum() %>%
     group_by(MLocID, month, `Station Description`, Site, in_spawn, DO_lim, DO_status) %>% 
@@ -515,9 +535,10 @@ n_sum() %>%
   output$nsummaryplot <- renderPlotly({
 
     plot_ly(n2(),
-            x = ~get(input$plottype)) %>% 
+            x = ~get(input$plottype)) %>% #the function get() addresses some issues that come
+      #up with dynamic plotting in plotly and reactive objects
       add_trace(y = ~over,
-                name = 'Meets criteria',
+                name = 'Meets criteria', # I think I was having some issues with spaces in the variable names
                 marker = list(color = 'rgb(49,130,189)'),
                 type = 'bar') %>%
       add_trace(
@@ -538,15 +559,16 @@ n_sum() %>%
         barmode = 'group')
   
   })
-
-  output$click <- renderPrint({
-    pc <- event_data("plotly_click")
-    if (is.null(pc)) "Click events appear here (double-click to clear)" else pc
-  })
   
   
 # min do plot ---------------------------------------------------------
 
+  # creates a creative dataframe that identifies the minimum DO
+  # at each site, within a sampling window, which was
+  # coded to be within a month time. I wasn't able to find exceptions to this rule for
+  # sampling window,
+  # but this should be recoded in the future if someone can find a more sophisticated
+  # way of IDing the sampling window
  wdi <- reactive({
    req(input$SiteCheckGroup)
    
@@ -557,7 +579,8 @@ n_sum() %>%
      summarize(min = min(DO))
  })
 
-  
+  # in some cases I have left possible modifications in to show what is possible,
+  # or some other variations that recently existed.
   output$mindoplot <- renderPlotly({
     req(wdi())
     plot_ly(wdi(),
@@ -588,14 +611,16 @@ n_sum() %>%
 
 # boxplot -----------------------------------------------------------------
 
-  
+  # creates the reactive dataframe boxplotdata()
+  # creates month and season categories
+  # this could be revised to make use of other reactive dataframes that already do this
+  # this should be reviewed for accuracy
   boxplotdata <-  reactive({
     md2 %>% 
       mutate(month = floor_date(`Sample Time`, "month")) %>%
       mutate(season = factor(month.abb[month(`Sample Time`)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
       mutate(year = factor(year(floor_date(`Sample Time`, "year")))) %>%
-      filter(crit_Instant == input$boxplotradio) %>%
       filter(Site %in% c(input$boxplotfreshsites, input$boxplotestsites))
   })
   
@@ -622,6 +647,7 @@ n_sum() %>%
     md2 %>% filter(Site %in% input$station_selection) %>% 
       select(-c(Lat, Long, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site)) %>% 
       mutate("Conductivity in uS" = Conductivity)
+    # a compromise for microsiemens, but still could not get it working
   })
   
  output$stations_subset <- DT::renderDataTable({
@@ -823,6 +849,10 @@ n_sum() %>%
              # yaxis = list(domain = c(0, 1))
              )
   })
+
+# Site table --------------------------------------------------------------
+
+  
   
   #  mini table with summary data
   output$plot.summ <- DT::renderDT({
