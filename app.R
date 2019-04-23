@@ -54,17 +54,20 @@ meets <- md2 %>%
 
 pctcolor <- colorFactor(palette = "RdYlGn", meets$pctbin)
 
+#creates object called "sites"
 load("data/sitesummary.Rdata")
+
+displaysites <- sites %>% select(-c(Lat, Long, LLID, n))
 
 s <- left_join(sites, meets, by = "MLocID")
 
-marginlist <- list(
-  l = 60,
-  r = 20, 
-  b = 50,
-  t = 20,
-  pad = 8
-)
+# marginlist <- list(
+#   l = 60,
+#   r = 20, 
+#   b = 50,
+#   t = 20,
+#   pad = 8
+# )
 
 pal <- viridis_pal(option = "D", direction = -1)(14)
 pal <- setNames(pal, unique(md2$Site))
@@ -139,7 +142,7 @@ tabsetPanel( #creates panels inside of "Overview plots"
                selectInput(inputId = "plottype",
                            "Select:", 
                            # "What the user sees in the menu" = "the column in the data"
-                           choices = c("By time" = "month",
+                           choices = c("By time" = "month", #Grouped by month
                                        "By site" = "MLocID",
                                        "By spawning" = "Spawning",
                                        "By DO limit" = "DO Limit")
@@ -271,6 +274,7 @@ tabPanel( "Display Continuous Data",
                                      "13368-ORDEQ Nehalem River at River Mile 15.0", 
                                      "29292-ORDEQ Nehalem River at Salmonberry River")
                                ),
+                               selected = "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
                                multiple = FALSE),
                    selectInput(
                      inputId = "x", # the shiny id to use other places
@@ -393,6 +397,7 @@ server <- function(input, output, session) {
     #prints out station information based on the map click
     HTML(paste(tags$h4(d$`Station Description`),
                "MLocID: ", d$MLocID, "<br/>",
+               "Type: ", d$Type, "<br/>",
                "Lat/long: ", round(d$Lat, 4), ", ", round(d$Long, 4), "<br/>",
                "River mile: ", round(d$RiverMile, 2), "<br/>",
                "Spawn dates: ", d$Spawn_dates, "<br/>",
@@ -455,11 +460,17 @@ server <- function(input, output, session) {
   output$mininplot <- renderPlotly({
     shiny::validate(need(!is.null(input$map_marker_click$id),
                          "Click on a station on the map to view data"))
+    
+    # this is a little messy
+    # creates a column called month (I regret this)
+    # summarizes by month
+    # creates a new column, season, to name it with the month name
+    # this preserves the year for plotting
     md2 %>% 
       filter(MLocID == input$map_marker_click$id) %>% 
       group_by(month = floor_date(`Sample Time`, "month")) %>% 
-      mutate(n_samples = n()) %>% 
-      mutate(season = factor(month.abb[month(`Sample Time`)],
+      summarize(n_samples = n()) %>% 
+      mutate(season = factor(month.abb[month(month)],
                              levels = c("May", "Jun", "Jul", "Aug", "Oct"))) %>% 
       plot_ly(x = ~month,
               y = ~n_samples,
@@ -609,10 +620,9 @@ n_sum() %>%
   
   stations_subset <- reactive({
     req(input$station_selection)
-    m <- paste0("Conductivity in ", intToUtf8(0x03BC), "S")
     md2 %>% filter(Site %in% input$station_selection) %>% 
       select(-c(Lat, Long, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site)) %>% 
-      mutate(paste0("Conductivity in ", intToUtf8(0x03BC), "S") = Conductivity)
+      mutate("Conductivity in uS" = Conductivity)
   })
   
  output$stations_subset <- DT::renderDataTable({
@@ -670,7 +680,7 @@ n_sum() %>%
                  x = ~get(input$x),
                  y = ~get(input$y2),
                  name = toTitleCase(input$y2),
-                 title = toTitleCase(input$y2),
+                 # title = toTitleCase(input$y2),
                  marker = list(color = "#3C3545"),
                  type = "scatter") %>% 
       layout(
@@ -682,7 +692,7 @@ n_sum() %>%
                  x = ~get(input$x),
                  y = ~get(input$y3),
                  name = toTitleCase(input$y3),
-                 title = toTitleCase(input$y3),
+                 # title = toTitleCase(input$y3),
                  marker = list(color = "#49805F"),
                  type = "scatter") %>% 
       layout(
@@ -694,7 +704,7 @@ n_sum() %>%
                  x = ~get(input$x), 
                  y = ~get(input$y4),
                  name = toTitleCase(input$y4),
-                 title = toTitleCase(input$y4),
+                 # title = toTitleCase(input$y4),
                  marker = list(color = "#959B4F"),
                  type = "scatter") %>% 
       layout(
@@ -705,17 +715,14 @@ n_sum() %>%
     sp <- subplot(a, b, c, d, nrows = 4, shareX = TRUE, titleY = TRUE)
     sp %>% 
       layout(
-        # plot_bgcolor = "#ecf0f1",
         paper_bgcolor = "#ecf0f1",
         # dragmode = "select",
         xaxis = list(
           title = toTitleCase(input$x),
           rangeselector = list()
-          # ,
-          # rangeslider = list(type = "date")
+
           )
-        # ,
-        # autosize = FALSE, width = 1000, height = 800
+
         ) %>% 
       config(displaylogo = FALSE,
              collaborate = FALSE,
