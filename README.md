@@ -2,8 +2,8 @@
 
 This app is to help visualize dissolved oxygen data around 14 sampling locations in Oregon's North Coast region over the span of about a decade.
 
-<<<<<<< HEAD
-##Usability
+
+## Usability
 =======
 
 This app is best used with some instruction from the creators. Its usability could be improved with the introduction of text prompts and tool tips.
@@ -11,7 +11,7 @@ This app is best used with some instruction from the creators. Its usability cou
 This is especially true of some of the Plotly functionality on the "Display Continuous Data" tab. In a pilot in another section of the department, a video introduction was used with great success to introduce users to the functionality of the app, including plots. This video was then embedded in the front tab of the app, which helped the users who chose to view it considerably.
 
 
-##Data prep
+## Data prep
 The data is cleaned before being loaded in the "FinalDataPrep.R" script. Right now, the app brings in data from three locations: AWQMS, LASAR, and Excel, that was preprocessed and collected in a file "ShinyAllData.Rdata." The LASAR data should now reside entirely in the AWQMS database, so this could be revised by querying AWQMS in the future. Entries that were nearly duplicate were typically left in to improve transparency.
 
 "FinalDataPrep.R" brings in data from several locations. "ShinyAllData" is the continuous dissolved oxygen data that also includes monitoring station id (formerly LASAR id, now MLocID) and typically temperature, pH and conductivity data. 
@@ -22,7 +22,7 @@ The "FinalDataPrep" script merges the DO data with some other data. This include
 
 
 
-##Next Steps
+## Next Steps
 
 =======
 The data is cleaned before being loaded in the "FinalDataPrep.R" script. Right now, the app brings in data from three locations: AWQMS, LASAR, and Excel, that was preprocessed and collected in a file "ShinyAllData.Rdata." The LASAR data should now reside entirely in AWQMS, so this could be revised in the future. Entries that were nearly duplicate were typically left in to improve transparency.
@@ -31,4 +31,6 @@ The data is cleaned before being loaded in the "FinalDataPrep.R" script. Right n
 
 
 Here are some of the next steps scheduled for the app:
-*Fixing all column names
++ Fixing all column names
++ Updating Estuary/Freshwater components, checking to make sure these categorizations are accurate, and propogating those categories through the app usefully
++ Addressing discrepancies in DO Saturation in the data, as well as creating visualizations for DO Sat or incorporating it along with its state regulatory threshholds
