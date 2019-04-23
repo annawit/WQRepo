@@ -97,14 +97,16 @@ summary(as.factor(dtasp$DO_status))
 
 
 names(dtasp)
-names(dta1)
+
 
 sites <- dtasp %>%
-  group_by(MLocID, StationDes, Lat_DD, Long_DD, LLID, RiverMile, Spawn_dates) %>% 
+  group_by(MLocID, StationDes, Lat_DD, Long_DD, LLID, RiverMile, Spawn_dates, MonLocType) %>% 
   count() %>% 
   rename(`Station Description` = StationDes,
          Lat = Lat_DD,
-         Long = Long_DD)
+         Long = Long_DD,
+         Type = MonLocType) %>% 
+  ungroup()
 
 #removes columns with DO sat only
 #removes columns we don't need in the continuous data
