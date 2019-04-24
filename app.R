@@ -36,7 +36,14 @@ md2 <- dta1 %>%
          `Data Source` = data_source,
          Lat = Lat_DD,
          Long = Long_DD,
-         Type = MonLocType)
+         Type = MonLocType,
+         `River Mile` = RiverMile,
+         `Spawn Dates` = Spawn_dates,
+         `Spawning Start` = SpawnStart,
+         `Spawning End` = SpawnEnd,
+         `Year round DO criteria` = crit_Instant,
+         `In Spawning?` = in_spawn,
+         `Seasonal DO criteria` = DO_lim)
 
 # gives percent meeting criteria at each site for leaflet map
 meets <- md2 %>% 
@@ -188,7 +195,7 @@ tabsetPanel( #creates panels inside of "Overview plots"
                width = 9,
                wellPanel(
                  # writes text directly into the interface at heading 4 size
-                 h4("Minimum DO at a given site for a given sampling window"),
+                 h4("Minimum DO by site and sampling deployment"),
                  plotlyOutput("mindoplot", height = 500)
                )
              )
@@ -338,8 +345,8 @@ tabPanel( "Display Continuous Data",
                             wellPanel(
                               # subplot is the large plot with four panels
                               # on the display continuous data page
-                              plotlyOutput("subplot", height = 800),
-                              DT::dataTableOutput("stations_subset")
+                              plotlyOutput("subplot", height = 800) #,
+                              #DT::dataTableOutput("stations_subset")
                             )
                      ),
                      column(4,
@@ -635,7 +642,8 @@ n_sum() %>%
             text = ~paste('Site: ', `Station Description`,
                           "<br>", DO_lim)) %>%
       layout(boxmode = "group",
-             xaxis = list(title = toTitleCase(input$boxplotx)))
+             xaxis = list(title = toTitleCase(input$boxplotx)),
+             yaxis = list(title = "Dissolved Oxygen (mg/L)"))
   })
   
   
@@ -816,7 +824,8 @@ n_sum() %>%
     ) %>% 
       DT::formatDate("Sample Time", "toLocaleString")
     
-  })
+  },
+  server = FALSE)
   
   
   
