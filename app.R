@@ -16,7 +16,7 @@ library(leaflet.extras)
 # Data -------------------------------------------------------
 
 
-load("data/dataforwqapp.Rdata")
+load("data/dataforwqapp.RData")
 
 
 # this can be moved into the FinalDataPrep script once it's final
@@ -62,7 +62,7 @@ meets <- md2 %>%
 pctcolor <- colorFactor(palette = "RdYlGn", meets$pctbin)
 
 #creates object called "sites"
-load("data/sitesummary.Rdata")
+load("data/sitesummary.RData")
 
 # this was to create a display table for the summary plots
 # It was created at the bottom of the server 
