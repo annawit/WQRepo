@@ -1,0 +1,10 @@
+name: wqrepo
+title:
+username:
+account: northcoastdo
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 898924
+bundleId: 2048100
+url: https://northcoastdo.shinyapps.io/wqrepo/
+when: 1556578871.7837

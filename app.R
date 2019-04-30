@@ -420,7 +420,7 @@ server <- function(input, output, session) {
                "Type: ", d$Type, "<br/>",
                "Lat/long: ", round(d$Lat, 4), ", ", round(d$Long, 4), "<br/>",
                "River mile: ", round(d$RiverMile, 2), "<br/>",
-               "Spawn dates: ", d$Spawn_dates, "<br/>",
+               "Spawn dates: ", d$`Spawn Dates`, "<br/>",
                "Number of samples: ", scales::comma(d$n.x), "<br/>",
                "Percent of all samples meeting criteria: ", round(d$pctmeets*100), "%"
                ))
@@ -511,7 +511,7 @@ server <- function(input, output, session) {
   # Overview Plots----- 
   n_sum <- reactive({
     md2 %>% 
-      select(MLocID, `Station Description`, Site, `Sample Time`, in_spawn, DO_lim, DO_status) %>% 
+      select(MLocID, `Station Description`, Site, `Sample Time`, `In Spawning?`, `Seasonal DO criteria`, DO_status) %>% 
       group_by(month = floor_date(`Sample Time`, "month")) %>% 
       mutate(n_samples = n()) %>% 
       mutate(season = factor(month.abb[month(`Sample Time`)],
@@ -525,16 +525,16 @@ server <- function(input, output, session) {
   # this has some remnant stuff that should be revised
 n2 <- reactive({
 n_sum() %>%
-    group_by(MLocID, month, `Station Description`, Site, in_spawn, DO_lim, DO_status) %>% 
+    group_by(MLocID, month, `Station Description`, Site, `In Spawning?`, `Seasonal DO criteria`, DO_status) %>% 
     summarise(n = n()) %>% 
     ungroup() %>% 
     spread(DO_status, n, fill = 0) %>% 
     rename(over = "Meets criteria",
            under = "Excursion") %>% 
     mutate(month = as.factor(month),
-           Spawning = recode(in_spawn, "0" = "Not in spawning",
+           Spawning = recode(`In Spawning?`, "0" = "Not in spawning",
                              "1" = "In spawning"),
-           `DO Limit` = recode_factor(DO_lim, "6.5" = "6.5 (Estuarine)", "8" = "8 (Cold Water - Aquatic Life)",
+           `DO Limit` = recode_factor(`Seasonal DO criteria`, "6.5" = "6.5 (Estuarine)", "8" = "8 (Cold Water - Aquatic Life)",
                                "11" = "11 (Spawning)")
     )
 })
@@ -640,7 +640,7 @@ n_sum() %>%
             # colors = viridis_pal(option = "D")(5), 
             type = "box",
             text = ~paste('Site: ', `Station Description`,
-                          "<br>", DO_lim)) %>%
+                          "<br>", `Seasonal DO criteria`)) %>%
       layout(boxmode = "group",
              xaxis = list(title = toTitleCase(input$boxplotx)),
              yaxis = list(title = "Dissolved Oxygen (mg/L)"))
@@ -653,7 +653,7 @@ n_sum() %>%
   stations_subset <- reactive({
     req(input$station_selection)
     md2 %>% filter(Site %in% input$station_selection) %>% 
-      select(-c(Lat, Long, LLID, RiverMile, Spawn_dates, SpawnStart, SpawnEnd, Site)) %>% 
+      select(-c(Lat, Long, LLID, `River Mile`, `Spawn Dates`, `Spawning Start`, `Spawning End`, Site)) %>% 
       mutate("Conductivity in uS" = Conductivity)
     # a compromise for microsiemens, but still could not get it working
   })
