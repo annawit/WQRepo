@@ -861,7 +861,8 @@ n_sum() %>%
             type = "bar",
             name = ~DO_status,
             colors = DO_pal,
-            color = ~DO_status) %>%
+            color = ~DO_status,
+            showlegend = FALSE) %>%
       layout(title = "Count",
              paper_bgcolor = "#ecf0f1"
              # ,
