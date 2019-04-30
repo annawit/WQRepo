@@ -723,7 +723,7 @@ n_sum() %>%
                  y = ~get(input$y2),
                  name = toTitleCase(input$y2),
                  # title = toTitleCase(input$y2),
-                 marker = list(color = "#3C3545"),
+                 marker = list(color = "black"),
                  type = "scatter",
                  showlegend = FALSE) %>% 
       layout(
@@ -736,7 +736,7 @@ n_sum() %>%
                  y = ~get(input$y3),
                  name = toTitleCase(input$y3),
                  # title = toTitleCase(input$y3),
-                 marker = list(color = "#3C3545"),
+                 marker = list(color = "purple"),
                  type = "scatter",
                  showlegend = FALSE) %>% 
       layout(
@@ -749,7 +749,7 @@ n_sum() %>%
                  y = ~get(input$y4),
                  name = toTitleCase(input$y4),
                  # title = toTitleCase(input$y4),
-                 marker = list(color = "#3C3545"),
+                 marker = list(color = "blue"),
                  type = "scatter",
                  showlegend = FALSE) %>% 
       layout(
@@ -853,7 +853,7 @@ n_sum() %>%
     req(plot.subset())
     
     DO_pal <- c("#000000", "#3182bd", "#DB532A")
-    DO_pal <- setNames(DO_pal, c("DO", "Meets criteria", "Excursion"))
+    DO_pal <- setNames(DO_pal, c("Dissolved Oxygen (mg/L)", "Meets criteria", "Excursion"))
     
     plot_ly(plot.summ(),
             x = ~DO_status,
