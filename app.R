@@ -207,7 +207,7 @@ tabsetPanel( #creates panels inside of "Overview plots"
                width = 9,
                wellPanel(
                  # writes text directly into the interface at heading 4 size
-                 h4("Minimum Dissolved Oxygen (mg/L) by site and sampling deployment"),
+                 h4("Minimum dissolved oxygen by site and sampling deployment"),
                  plotlyOutput("mindoplot", height = 500)
                )
              )
@@ -618,7 +618,7 @@ n_sum() %>%
              # plot_bgcolor = "#ecf0f1",
              xaxis = list(title = "Date",
                           range = c("2007-01-01", "2017-01-31")),
-             yaxis = list(title = "Minimum Dissolved Oxygen (mg/L)",
+             yaxis = list(title = "Dissolved Oxygen (mg/L)",
                           range = c(-1, 13))
              # ,
              # autosize = FALSE, width = 1000, height = 800
