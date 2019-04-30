@@ -618,7 +618,7 @@ n_sum() %>%
              # plot_bgcolor = "#ecf0f1",
              xaxis = list(title = "Date",
                           range = c("2007-01-01", "2017-01-31")),
-             yaxis = list(title = "Minimum Dissolved Oxygen, mg/L",
+             yaxis = list(title = "Minimum Dissolved Oxygen (mg/L)",
                           range = c(-1, 13))
              # ,
              # autosize = FALSE, width = 1000, height = 800
