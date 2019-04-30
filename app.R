@@ -23,16 +23,16 @@ load("data/dataforwqapp.RData")
 md2 <- dta1 %>% 
   rename(`Station Description` = StationDes,
          `Sample Time` = datetime,
-         Temp = temp,
+         `Temperature (Celsius)` = temp,
          `Temp Grade` = grade_temp,
          pH = ph,
          `pH Grade` = grade_ph,
-         Conductivity = cond,
+         `Conductivity (uS)` = cond,
          `Conductivity Grade` = grade_cond,
-         DO = do,
-         `DO Grade` = grade_do,
-         `DO Sat` = do_sat,
-         `DO Sat Grade` = grade_do_sat,
+         `Dissolved Oxygen (mg/L)` = do,
+         `Dissolved Oxygen (mg/L) Grade` = grade_do,
+         `Dissolved Oxygen Saturation` = do_sat,
+         `Dissolved Oxygen Saturation Grade` = grade_do_sat,
          `Data Source` = data_source,
          Lat = Lat_DD,
          Long = Long_DD,
@@ -123,8 +123,8 @@ tabPanel("Select from map",
                  inputId = "checkboxtablesorter",
                  label = "Select table columns to display:",
                  choices = names(md2),
-                 selected = c("MLocID", "Sample Time", "Temp", "pH",
-                              "DO", "Conductivity",
+                 selected = c("MLocID", "Sample Time", "Temperature (Celsius)", "pH",
+                              "Dissolved Oxygen (mg/L)", "Conductivity (uS)",
                               "Station Description"))),
              wellPanel(
                HTML("Select a station and variables,
@@ -173,7 +173,7 @@ tabsetPanel( #creates panels inside of "Overview plots"
            )
   ),
 # Minimum DO ----------------
-  tabPanel("Minimum DO",
+  tabPanel("Minimum Dissolved Oxygen (mg/L)",
            br(),
            sidebarLayout(
              sidebarPanel(
@@ -181,13 +181,25 @@ tabsetPanel( #creates panels inside of "Overview plots"
                pickerInput(inputId = "SiteCheckGroup", 
                            label = h3("Select sites:"), 
                            choices = list(
-                             # This creates sub-lists in the dropdown menu
-                             # I'm sorry for this hacky way I did this
-                             # If I have time I'll come back and fix it
-                             Estuarine = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)","34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)","10523-ORDEQ Nestucca R at Cloverdale", "13421-ORDEQ Wilson River at Hwy 101", "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
-                             Freshwater = c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", "21800-ORDEQ Nestucca River at River Mile 38.57", "13428-ORDEQ Dougherty Slough at Hwy 101", "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", "29302-ORDEQ Nehalem River at Spruce Run Creek", "13368-ORDEQ Nehalem River at River Mile 15.0", "29292-ORDEQ Nehalem River at Salmonberry River")
+                             Estuarine = 
+                               c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
+                                 "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)", 
+                                 "10523-ORDEQ Nestucca R at Cloverdale", 
+                                 "13421-ORDEQ Wilson River at Hwy 101", 
+                                 "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)", 
+                                 "13428-ORDEQ Dougherty Slough at Hwy 101", 
+                                 "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)",
+                                 "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)"), 
+                             Freshwater = 
+                               c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", 
+                                 "21800-ORDEQ Nestucca River at River Mile 38.57", 
+                                 "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", 
+                                 "29302-ORDEQ Nehalem River at Spruce Run Creek", 
+                                 "13368-ORDEQ Nehalem River at River Mile 15.0", 
+                                 "29292-ORDEQ Nehalem River at Salmonberry River")
                            ),
-                           selected = "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)",
+                           selected = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)",
+                                        "22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)"),
                            multiple = TRUE
                )
              ),
@@ -195,7 +207,7 @@ tabsetPanel( #creates panels inside of "Overview plots"
                width = 9,
                wellPanel(
                  # writes text directly into the interface at heading 4 size
-                 h4("Minimum DO by site and sampling deployment"),
+                 h4("Minimum Dissolved Oxygen (mg/L) by site and sampling deployment"),
                  plotlyOutput("mindoplot", height = 500)
                )
              )
@@ -228,29 +240,26 @@ tabsetPanel( #creates panels inside of "Overview plots"
                #                "Freshwater sites" = "8")),
                pickerInput(inputId = "boxplotestsites", 
                            label = "Select sites:", 
-                           choices = list(
-                             Estuarine = 
-                               c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
-                                 "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
-                                 "10523-ORDEQ Nestucca R at Cloverdale", 
-                                 "13421-ORDEQ Wilson River at Hwy 101", 
-                                 "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
-                             Freshwater = 
-                               c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", 
-                                 "21800-ORDEQ Nestucca River at River Mile 38.57", 
-                                 "13428-ORDEQ Dougherty Slough at Hwy 101", 
-                                 "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", 
-                                 "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", 
-                                 "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", 
-                                 "29302-ORDEQ Nehalem River at Spruce Run Creek", 
-                                 "13368-ORDEQ Nehalem River at River Mile 15.0", 
-                                 "29292-ORDEQ Nehalem River at Salmonberry River")
-                           ),
+                             choices = list(
+                               Estuarine = 
+                                 c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
+                                   "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)", 
+                                   "10523-ORDEQ Nestucca R at Cloverdale", 
+                                   "13421-ORDEQ Wilson River at Hwy 101", 
+                                   "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)", 
+                                   "13428-ORDEQ Dougherty Slough at Hwy 101", 
+                                   "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)",
+                                   "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)"), 
+                               Freshwater = 
+                                 c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", 
+                                   "21800-ORDEQ Nestucca River at River Mile 38.57", 
+                                   "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", 
+                                   "29302-ORDEQ Nehalem River at Spruce Run Creek", 
+                                   "13368-ORDEQ Nehalem River at River Mile 15.0", 
+                                   "29292-ORDEQ Nehalem River at Salmonberry River")
+                             ),
                            selected = c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
-                                        "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
-                                        "10523-ORDEQ Nestucca R at Cloverdale", 
-                                        "13421-ORDEQ Wilson River at Hwy 101", 
-                                        "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
+                                        "22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)"),
                            multiple = TRUE
                            )
              ),
@@ -275,59 +284,59 @@ tabPanel( "Display Continuous Data",
                  sidebarPanel(
                    width = 3,
                    pickerInput(inputId = "station_selection", 
-                               label = h3("Select sites:"), 
+                               label = h3("Select sites:"),
                                choices = list(
-                                 Estuarine = 
-                                   c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
-                                     "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
-                                     "10523-ORDEQ Nestucca R at Cloverdale", 
-                                     "13421-ORDEQ Wilson River at Hwy 101", 
-                                     "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)"),
-                                 Freshwater = 
-                                   c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", 
-                                     "21800-ORDEQ Nestucca River at River Mile 38.57", 
-                                     "13428-ORDEQ Dougherty Slough at Hwy 101", 
-                                     "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)", 
-                                     "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)", 
-                                     "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", 
-                                     "29302-ORDEQ Nehalem River at Spruce Run Creek", 
-                                     "13368-ORDEQ Nehalem River at River Mile 15.0", 
-                                     "29292-ORDEQ Nehalem River at Salmonberry River")
-                               ),
+                               Estuarine = 
+                                 c("13431-ORDEQ Trask River at Netarts Road (Hwy. 6)", 
+                                   "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)", 
+                                   "10523-ORDEQ Nestucca R at Cloverdale", 
+                                   "13421-ORDEQ Wilson River at Hwy 101", 
+                                   "11856-ORDEQ Nehalem River at Foley Road (Roy Creek Campground)", 
+                                   "13428-ORDEQ Dougherty Slough at Hwy 101", 
+                                   "13429-ORDEQ Dougherty Slough at Wilson River Loop Road (Tillamook)",
+                                   "13430-ORDEQ Hoquarten Slough at Hwy 101 (Tillamook)"), 
+                               Freshwater = 
+                                 c("22394-ORDEQ Nestucca River at first bridge ramp (upstream of Beaver)", 
+                                   "21800-ORDEQ Nestucca River at River Mile 38.57", 
+                                   "23509-ORDEQ Nehalem River downstream of Humbug Creek at Lower Nehalem Road", 
+                                   "29302-ORDEQ Nehalem River at Spruce Run Creek", 
+                                   "13368-ORDEQ Nehalem River at River Mile 15.0", 
+                                   "29292-ORDEQ Nehalem River at Salmonberry River")
+                                ),
                                selected = "34440-ORDEQ Hall Slough at Goodspeed Road (Tillamook, OR)",
                                multiple = FALSE),
                    selectInput(
                      inputId = "x", # the shiny id to use other places
                      label = "X-axis", # what the user sees in the UI
-                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
+                     choices = c("Sample Time", "Temperature (Celsius)", "Temp Grade", "pH",
                                 "pH Grade",
-                                "Conductivity",
+                                "Conductivity (uS)",
                                 "Conductivity Grade",
-                                "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
+                                "Dissolved Oxygen (mg/L) Grade", "Dissolved Oxygen Saturation", "Dissolved Oxygen Saturation Grade", "Data Source"),
                      selected = "Sample Time" # what I want it to start on by default
                    ),
                    selectInput(
                      inputId = "y2",
                      label = "2nd y-axis",
-                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
-                                 "pH Grade", "Conductivity", "Conductivity Grade",
-                                 "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
-                     selected = "Temp"
+                     choices = c("Sample Time", "Temperature (Celsius)", "Temp Grade", "pH",
+                                 "pH Grade", "Conductivity (uS)", "Conductivity Grade",
+                                 "Dissolved Oxygen (mg/L) Grade", "Dissolved Oxygen Saturation", "Dissolved Oxygen Saturation Grade", "Data Source"),
+                     selected = "Temperature (Celsius)"
                    ),
                    selectInput(
                      inputId = "y3",
                      label = "3rd y-axis",
-                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
-                                 "pH Grade", "Conductivity", "Conductivity Grade",
-                                 "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
-                     selected = "Conductivity"
+                     choices = c("Sample Time", "Temperature (Celsius)", "Temp Grade", "pH",
+                                 "pH Grade", "Conductivity (uS)", "Conductivity Grade",
+                                 "Dissolved Oxygen (mg/L) Grade", "Dissolved Oxygen Saturation", "Dissolved Oxygen Saturation Grade", "Data Source"),
+                     selected = "Conductivity (uS)"
                    ),
                    selectInput(
                      inputId = "y4",
                      label = "4th y-axis",
-                     choices = c("Sample Time", "Temp", "Temp Grade", "pH",
-                                 "pH Grade", "Conductivity", "Conductivity Grade",
-                                 "DO Grade", "DO Sat", "DO Sat Grade", "Data Source"),
+                     choices = c("Sample Time", "Temperature (Celsius)", "Temp Grade", "pH",
+                                 "pH Grade", "Conductivity (uS)", "Conductivity Grade",
+                                 "Dissolved Oxygen (mg/L) Grade", "Dissolved Oxygen Saturation", "Dissolved Oxygen Saturation Grade", "Data Source"),
                      selected = "pH"
                    ),
                    dateRangeInput(inputId = 'daterange',
@@ -568,9 +577,9 @@ n_sum() %>%
   })
   
   
-# min do plot ---------------------------------------------------------
+# min Dissolved Oxygen (mg/L) plot ---------------------------------------------------------
 
-  # creates a creative dataframe that identifies the minimum DO
+  # creates a creative dataframe that identifies the minimum Dissolved Oxygen (mg/L)
   # at each site, within a sampling window, which was
   # coded to be within a month time. I wasn't able to find exceptions to this rule for
   # sampling window,
@@ -580,10 +589,10 @@ n_sum() %>%
    req(input$SiteCheckGroup)
    
    md2 %>%
-     select(MLocID, `Sample Time`, DO, Site) %>% 
+     select(MLocID, `Sample Time`, `Dissolved Oxygen (mg/L)`, Site) %>% 
      group_by(MLocID, Site, month.p = floor_date(`Sample Time`, "month")) %>% 
      filter(Site %in% input$SiteCheckGroup) %>% 
-     summarize(min = min(DO))
+     summarize(min = min(`Dissolved Oxygen (mg/L)`))
  })
 
   # in some cases I have left possible modifications in to show what is possible,
@@ -635,7 +644,7 @@ n_sum() %>%
     
     plot_ly(boxplotdata(),
             x = ~get(input$boxplotx),
-            y = ~DO,
+            y = ~`Dissolved Oxygen (mg/L)`,
             color = ~get(input$boxplotgroup),
             # colors = viridis_pal(option = "D")(5), 
             type = "box",
@@ -654,7 +663,7 @@ n_sum() %>%
     req(input$station_selection)
     md2 %>% filter(Site %in% input$station_selection) %>% 
       select(-c(Lat, Long, LLID, `River Mile`, `Spawn Dates`, `Spawning Start`, `Spawning End`, Site)) %>% 
-      mutate("Conductivity in uS" = Conductivity)
+      mutate("Conductivity in uS" = `Conductivity (uS)`)
     # a compromise for microsiemens, but still could not get it working
   })
   
@@ -696,17 +705,17 @@ n_sum() %>%
 
     a <- plot_ly(data = stations_subset(),
                  x = ~get(input$x),
-                 y = ~DO,
+                 y = ~`Dissolved Oxygen (mg/L)`,
                  colors = DO_pal,
                  type = "scatter",
                  source = "A",
                  showlegend = FALSE) %>% 
       add_markers(color = ~DO_status,
                   colors = DO_pal,
-                  showlegend = TRUE) %>% 
+                  showlegend = TRUE) %>% # NOTE
       layout(
         yaxis = list(
-          title = "DO, mg/L"
+          title = "Dissolved Oxygen (mg/L)"
         )
       )
     b <- plot_ly(data = stations_subset(),
@@ -715,7 +724,8 @@ n_sum() %>%
                  name = toTitleCase(input$y2),
                  # title = toTitleCase(input$y2),
                  marker = list(color = "#3C3545"),
-                 type = "scatter") %>% 
+                 type = "scatter",
+                 showlegend = FALSE) %>% 
       layout(
         yaxis = list(
           title = toTitleCase(input$y2)
@@ -726,8 +736,9 @@ n_sum() %>%
                  y = ~get(input$y3),
                  name = toTitleCase(input$y3),
                  # title = toTitleCase(input$y3),
-                 marker = list(color = "#49805F"),
-                 type = "scatter") %>% 
+                 marker = list(color = "#3C3545"),
+                 type = "scatter",
+                 showlegend = FALSE) %>% 
       layout(
         yaxis = list(
           title = input$y3
@@ -738,8 +749,9 @@ n_sum() %>%
                  y = ~get(input$y4),
                  name = toTitleCase(input$y4),
                  # title = toTitleCase(input$y4),
-                 marker = list(color = "#959B4F"),
-                 type = "scatter") %>% 
+                 marker = list(color = "#3C3545"),
+                 type = "scatter",
+                 showlegend = FALSE) %>% 
       layout(
         yaxis = list(
           title = toTitleCase(input$y4)
