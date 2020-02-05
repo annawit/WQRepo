@@ -1,0 +1,13 @@
+name: 20190709_DanSobota_NorthCoastContinuousDOVisualizer
+title: 20190709_DanSobota_NorthCoastContinuousDOVisualizer
+username:
+account: ygrund
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1586796
+bundleId: 2729229
+url: https://ygrund.shinyapps.io/20190709_DanSobota_NorthCoastContinuousDOVisualizer/
+when: 1579047346.14163
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|FinalDataPrep.R|shinyio.R
