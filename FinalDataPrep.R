@@ -3,6 +3,7 @@
 # revised 4/19/2019
 # by Anna Withington | anna.withington@gmail.com
 # revised 7/9/2019 Correction to the DO satuation and status
+# revised 2/26/2020 combined Sand Lake data
 # by Yuan Grund | grund.yuan@deq.state.or.us
 
 ## install.packages("tidyverse"); install.packages("lubridate"); install.packages("dplyr")
@@ -41,10 +42,88 @@ spawnjoin$station_key <- as.factor(spawnjoin$station_key)
 dataspawn <- left_join(dta3, spawnjoin, by = c("lasar_id" = "station_key"))
 
 # join DO baseline criteria to above
-DO_base <- left_join(dataspawn, DO_lvls, by = "DO_code")
+DO_base_1 <- left_join(dataspawn, DO_lvls, by = "DO_code")
+
+DO_base <- DO_base_1 %>% 
+  select(MLocID, StationDes, datetime, temp, grade_temp, ph, grade_ph, cond,
+         grade_cond, do, grade_do, do_sat, grade_do_sat, data_source,
+         Lat_DD, Long_DD, MonLocType, RiverMile, Spawn_dates, SpawnStart, 
+         SpawnEnd, crit_30D, crit_7Mi, crit_Min, crit_Instant,ELEV_Ft) %>% 
+  rename(spcond = cond,
+         grade_spcond = grade_cond)
+
+
+# combine Sand Lake Data ----
+b <- read.csv("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo/data/SandLake_Beltz_b.csv")
+d <- read.csv("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo/data/SandLake_Beltz_Beaver_Dam_d.csv")
+n <- read.csv("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo/data/SandLake_NNSLWC_n.csv")
+
+b <- b %>% 
+  select(date,time,site,lat,long,do,do_sat,spcond,sal,temp,pH,depth)
+d <- d %>% 
+  select(date,time,site,lat,long,do,do_sat,spcond,sal,temp,pH,depth)
+n <- n %>% 
+  select(date,time,site,lat,long,do,spcond,temp,pH) %>%
+  mutate(do_sat = NA,
+         sal = NA,
+         depth = NA) %>% 
+  select(date,time,site,lat,long,do,do_sat,spcond,sal,temp,pH,depth)
+
+sldta <- rbind(b,d,n)
+# format datatime
+sldta$date = as.Date(sldta$date, format = "%m/%d/%Y")
+sldta$datetime <- paste(sldta$date,sldta$time)
+# sldta$datetime <- as.POSIXct(sldta$datetime,"%Y-%m-%d %H:%M:%S")
+# compare variables between DO_base and sldta and match sldta variables with DO_base variables
+sldta <- sldta %>% 
+  mutate(MLocID = "Sand Lake Estuary",
+         StationDes = site,
+         datetime = datetime,
+         temp = temp,
+         grade_temp = NA,
+         ph = pH,
+         grade_ph = NA,
+         spcond = spcond,
+         grade_spcond = NA,
+         do = do,
+         grade_do = NA,
+         do_sat = do_sat,
+         grade_do_sat = NA,
+         data_source = NA,
+         Lat_DD = lat,
+         Long_DD = long,
+         MonLocType = "Estuary",
+         RiverMile = NA,
+         Spawn_dates = NA,
+         SpawnStart = NA,
+         SpawnEnd = NA,
+         crit_30D = NA,
+         crit_7Mi = NA,
+         crit_Min = NA,
+         crit_Instant = NA,
+         sal = sal,
+         depth = depth,
+         ELEV_Ft = NA) %>% 
+  select(MLocID,StationDes,datetime,temp,grade_temp,ph,grade_ph,spcond,grade_spcond,
+         do,grade_do,do_sat,grade_do_sat,data_source,Lat_DD,Long_DD,MonLocType,
+         RiverMile,Spawn_dates,SpawnStart,SpawnEnd,crit_30D,crit_7Mi,crit_Min,
+         crit_Instant,spcond,grade_spcond,sal,depth,ELEV_Ft)
+
+DO_base <- DO_base %>% 
+  mutate(sal = NA,
+         depth = NA) %>% 
+  select(MLocID,StationDes,datetime,temp,grade_temp,ph,grade_ph,spcond,grade_spcond,
+         do,grade_do,do_sat,grade_do_sat,data_source,Lat_DD,Long_DD,MonLocType,
+         RiverMile,Spawn_dates,SpawnStart,SpawnEnd,crit_30D,crit_7Mi,crit_Min,
+         crit_Instant,spcond,grade_spcond,sal,depth,ELEV_Ft)
+
+
+
+DO_base <- rbind(DO_base,sldta)
+# ----
 
 # remove samples with negetive DO value
-DO_base$do <- replace(DO_base$do,which(DO_base$do <= 0),NA)
+DO_base$do <- replace(DO_base$do,which(DO_base$do < 0),NA) # updated on 2020.2.19 zero DO values will be included in the analysis
 
 # Correct DO_sat: re-cal DO_sat and update "-" values to NA
 DO_base$do_sat_cor <- if_else(
@@ -117,8 +196,7 @@ dta4 <- DO_base %>%
 sites <- dta4 %>%
   group_by(MLocID, StationDes, Lat_DD, Long_DD, RiverMile, Spawn_dates, MonLocType) %>% 
   count() %>% 
-  rename(`Station Description` = StationDes,
-         Lat = Lat_DD,
+  rename(Lat = Lat_DD,
          Long = Long_DD,
          Type = MonLocType) %>% 
   ungroup()
@@ -128,17 +206,17 @@ sites <- dta4 %>%
 
 dta1 <- dta4 %>% 
   filter(!is.na(DO_status)) %>% 
-  select(MLocID, StationDes, datetime, temp, grade_temp, ph, grade_ph, cond,
-         grade_cond, do, grade_do, do_sat_cor, grade_do_sat, data_source,
+  select(MLocID, StationDes, datetime, temp, grade_temp, ph, grade_ph, spcond,
+         grade_spcond, do, grade_do, do_sat_cor, grade_do_sat, data_source,
          Lat_DD, Long_DD, MonLocType, RiverMile, Spawn_dates, SpawnStart, 
          SpawnEnd, in_spawn, DO_lim, DO_sat_lim, DO_status) %>% 
   mutate(Site = paste(MLocID," ",StationDes),
          Date = as.Date(format(datetime, "%Y-%m-%d")))
-  
+
 
 dta <- dta1 %>%
-  select(MLocID, StationDes, datetime, temp, grade_temp, ph, grade_ph, cond,
-         grade_cond, do, grade_do, do_sat_cor, grade_do_sat, data_source,
+  select(MLocID, StationDes, datetime, temp, grade_temp, ph, grade_ph, spcond,
+         grade_spcond, do, grade_do, do_sat_cor, grade_do_sat, data_source,
          Lat_DD, Long_DD, MonLocType, RiverMile, Spawn_dates, SpawnStart, 
          SpawnEnd, in_spawn, DO_lim, DO_sat_lim, DO_status, Site, Date) %>%
   rename(`Station Description` = StationDes,
@@ -147,8 +225,8 @@ dta <- dta1 %>%
          `Temperature Grade` = grade_temp,
          `pH` = ph,
          `pH Grade` = grade_ph,
-         "Conductivity (\u03BCS)" = cond,
-         `Conductivity Grade` = grade_cond,
+         "Specific Conductivity (\u03BCS)" = spcond,
+         `Specific Conductivity Grade` = grade_spcond,
          `Dissolved Oxygen (mg/L)` = do,
          `Dissolved Oxygen Grade` = grade_do,
          `Dissolved Oxygen Saturation (%)` = do_sat_cor,
@@ -168,14 +246,21 @@ dta <- dta1 %>%
 
 # Gives percent meeting criteria at each site
 meets <- dta1 %>%
-  group_by(MLocID,DO_status) %>%
+  group_by(StationDes,DO_status) %>%
   count() %>%
-  group_by(MLocID) %>% 
+  group_by(StationDes) %>% 
   mutate(pctmeets = n/sum(n)) %>% 
-  filter(DO_status == "Meets criteria") %>% 
-  mutate(pctbin = ifelse(pctmeets == 1,"All samples meeting criteria", "Some samples not meeting criteria"))
+  mutate(pctbin = ifelse(DO_status == "Excursion" & pctmeets == 1, "No samples meet criteria",
+                         ifelse(DO_status == "Meets criteria" & pctmeets == 1, "All samples meet criteria",
+                                ifelse(DO_status == "Meets criteria" & (pctmeets >= 0.50 & pctmeets < 1), "More than 50% samples meet criteria",
+                                       ifelse(DO_status == "Meets criteria" & pctmeets < 0.50, "Less than 50% samples meet criteria",
+                                              NA))))) %>% 
+  filter(!is.na(pctbin))
 
 
-s <- left_join(sites, meets, by= "MLocID")
+s <- left_join(sites, meets, by= "StationDes") %>% 
+  rename(`Station Description` = StationDes)
+
+rm(b,d,dataspawn,DO_base,DO_base_1,DO_lvls,dta2,dta3,dta4,n,sldta,spawnjoin,spn,stations)
 
 save.image(file = "finaldata.RData")

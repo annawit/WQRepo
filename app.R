@@ -274,12 +274,12 @@ ui <- fluidPage(
                                          inputId = "x",
                                          label = "X-axis",
                                          choices = c("Sample Time" = "Sample Time", # "selectInput item" = "data variable name" (both need to be "" no matter it is long name or short name)
-                                                     "Temperature (\u00B0C)" = "Temperature (°C)", 
+                                                     "Temperature (\u00B0C)" = "Temperature (?C)", 
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Conductivity (\u03BCS)" = "Conductivity (µS)", 
-                                                     "Conductivity Grade" = "Conductivity Grade", 
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (?S)", 
+                                                     "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
@@ -291,12 +291,12 @@ ui <- fluidPage(
                                          inputId = "y2",
                                          label = "2nd y-axis",
                                          choices = c("Sample Time" = "Sample Time", 
-                                                     "Temperature (\u00B0C)" = "Temperature (°C)", 
+                                                     "Temperature (\u00B0C)" = "Temperature (?C)", 
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Conductivity (\u03BCS)" = "Conductivity (µS)", 
-                                                     "Conductivity Grade" = "Conductivity Grade", 
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (?S)", 
+                                                     "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
@@ -308,29 +308,29 @@ ui <- fluidPage(
                                          inputId = "y3",
                                          label = "3rd y-axis",
                                          choices = c("Sample Time" = "Sample Time", 
-                                                     "Temperature (\u00B0C)" = "Temperature (°C)", 
+                                                     "Temperature (\u00B0C)" = "Temperature (?C)", 
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Conductivity (\u03BCS)" = "Conductivity (µS)", 
-                                                     "Conductivity Grade" = "Conductivity Grade", 
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (?S)", 
+                                                     "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
                                                      "Data Source" = "Data Source"),
-                                         selected = "Conductivity (µS)"
+                                         selected = "Specific Conductivity (?S)"
                                        ),
                                        
                                        selectInput(
                                          inputId = "y4",
                                          label = "4th y-axis",
                                          choices = c("Sample Time" = "Sample Time", 
-                                                     "Temperature (\u00B0C)" = "Temperature (°C)", 
+                                                     "Temperature (\u00B0C)" = "Temperature (?C)", 
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Conductivity (\u03BCS)" = "Conductivity (µS)", 
-                                                     "Conductivity Grade" = "Conductivity Grade", 
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (?S)", 
+                                                     "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
@@ -379,7 +379,7 @@ ui <- fluidPage(
 server <- function(input,output,session){
   
   # 2.1 Leaflet map ----
-  pctcolor <- colorFactor(palette = c("blue","red"), domain = meets$pctbin)
+  pctcolor <- colorFactor(palette = c("blue","green","orange","red"), domain = meets$pctbin)
   output$map <- renderLeaflet({
     leaflet() %>% 
       addProviderTiles("Esri.WorldImagery",group = "Esir Satellite Map") %>% 
@@ -394,7 +394,7 @@ server <- function(input,output,session){
                        fillOpacity = 0.5,
                        label = ~ paste0("Station ID:", MLocID, " ", `Station Description`),
                        labelOptions = labelOptions(textOnly = FALSE),
-                       layerId = s$MLocID) %>% 
+                       layerId = s$`Station Description`) %>% 
       addLegend("bottomright",
                 pal = pctcolor,
                 values = meets$pctbin,
@@ -520,7 +520,7 @@ server <- function(input,output,session){
   
   # 2.4 Min DO plots ----
   # set colors
-  pal <- viridis_pal(option = "D",direction = -1)(14)
+  pal <- viridis_pal(option = "D",direction = -1)(23)
   pal <- setNames(pal,unique(dta1$Site))
   # col <- colorRampPalette(brewer.pal(9,"Set3"))(14)
   # sitecol <- viridis_pal(option = "D")(14)
@@ -849,7 +849,7 @@ server <- function(input,output,session){
       stations_subset() %>% 
         select(MLocID, `Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, `Dissolved Oxygen Grade`,
                `Dissolved Oxygen Saturation (%)`, `Dissolved Oxygen Saturation Grade`, `DO Status`, `Temperature (°C)`,
-               `Temperature Grade`, pH, `pH Grade`, `Conductivity (µS)`, `Conductivity Grade`, `Data Source`) %>% 
+               `Temperature Grade`, pH, `pH Grade`, `Specific Conductivity (µS)`, `Specific Conductivity Grade`, `Data Source`) %>% 
         select(MLocID,`Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, input$x, input$y2, input$y3, input$y4)
       
     })
