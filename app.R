@@ -76,7 +76,7 @@ ui <- fluidPage(
                                      wellPanel(
                                        selectInput(inputId = "plottype",
                                                    "Select:",
-                                                   choices = c("By Site" = "MLocID",
+                                                   choices = c("By Site" = "Station Description",
                                                                "By Time" = "month",
                                                                "By Spawning" = "Spawning",
                                                                "By DO Criteria" = "DO Limit")
@@ -179,7 +179,7 @@ ui <- fluidPage(
                                      selectInput("boxplot",
                                                  "Select x-axis:",
                                                  choices = c(
-                                                   "Site" = "MLocID",
+                                                   "Site" = "StationDes",
                                                    "Season" = "season",
                                                    "Year" = "year"
                                                  )
@@ -188,7 +188,7 @@ ui <- fluidPage(
                                      selectInput("boxplotgrp",
                                                  "Select color:",
                                                  choices = c(
-                                                   "Site" = "MLocID",
+                                                   "Site" = "StationDes",
                                                    "Season" = "season",
                                                    "Year" = "year"
                                                  )
@@ -379,6 +379,10 @@ ui <- fluidPage(
 server <- function(input,output,session){
   
   # 2.1 Leaflet map ----
+  meets$pctbin <- factor(meets$pctbin,levels = c("All samples meet criteria",
+                                                 "More than 50% samples meet criteria",
+                                                 "Less than 50% samples meet criteria",
+                                                 "No samples meet criteria"))
   pctcolor <- colorFactor(palette = c("blue","green","orange","red"), domain = meets$pctbin)
   output$map <- renderLeaflet({
     leaflet() %>% 
@@ -407,7 +411,7 @@ server <- function(input,output,session){
   # 2.2 Map table and info ----
   maptable <- reactive({
     dta %>%
-      filter(MLocID == input$map_marker_click$id) %>% 
+      filter(`Station Description` == input$map_marker_click$id) %>% 
       select(input$tablecolumnselector)
     
   })
@@ -440,7 +444,7 @@ server <- function(input,output,session){
     req(input$map_marker_click$id)
     
     d <- s %>% 
-      filter(MLocID == input$map_marker_click$id)
+      filter(`Station Description` == input$map_marker_click$id)
     
     HTML(paste(
       tags$h4(d$'Station Description'),
@@ -466,7 +470,7 @@ server <- function(input,output,session){
                          br()))
     
     dta1 %>%
-      filter(MLocID == input$map_marker_click$id) %>%
+      filter(StationDes == input$map_marker_click$id) %>%
       group_by(month = floor_date(datetime,"month")) %>% 
       mutate(year = floor_date(datetime,"year")) %>% 
       summarize(n_samples = n()) %>%
@@ -479,21 +483,41 @@ server <- function(input,output,session){
   })
   
   # 2.3 Sample summary plots ----
+  #ss <- reactive({
+   # dta1 %>% 
+    #  select(MLocID, StationDes,datetime,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
+    #  group_by(month = floor_date(datetime,"month")) %>% 
+    #  group_by(MLocID,StationDes,month,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
+    #  summarise(n=n()) %>% 
+    #  ungroup() %>% 
+    #  spread(DO_status,n,fill = 0) %>% 
+    #  rename(over = "Meets criteria",
+    #         under = "Excursion") %>% 
+    #  mutate(month = as.Date(month),
+    #         Spawning = dplyr::recode(as.factor(in_spawn),
+    #                                  "TRUE" = "In spawning",
+    #                                  "FALSE" = "Not in spawning"),
+    #         `DO Limit` = dplyr::recode_factor(DO_lim,
+    #                                           "6.5" = "6.5 mg/L (Estuarine)",
+    #                                           "8" = "8 mg/L or 90% (Cold Water - Aquatic Life)",
+    #                                           "11" = "11 mg/L or 95% (Spawning)"))
+  #})
+  
   ss <- reactive({
-    dta1 %>% 
-      select(MLocID, StationDes,datetime,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
-      group_by(month = floor_date(datetime,"month")) %>% 
-      group_by(MLocID,StationDes,month,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
+    dta %>% 
+      select(MLocID, `Station Description`,`Sample Time`,`During Spawning`,`DO Criteria`,`DO Saturation Criteria`,`DO Status`) %>% 
+      group_by(month = floor_date(`Sample Time`,"month")) %>% 
+      group_by(MLocID, `Station Description`,month,`During Spawning`,`DO Criteria`,`DO Saturation Criteria`,`DO Status`) %>% 
       summarise(n=n()) %>% 
       ungroup() %>% 
-      spread(DO_status,n,fill = 0) %>% 
+      spread(`DO Status`,n,fill = 0) %>% 
       rename(over = "Meets criteria",
              under = "Excursion") %>% 
       mutate(month = as.Date(month),
-             Spawning = dplyr::recode(as.factor(in_spawn),
+             Spawning = dplyr::recode(as.factor(`During Spawning`),
                                       "TRUE" = "In spawning",
                                       "FALSE" = "Not in spawning"),
-             `DO Limit` = dplyr::recode_factor(DO_lim,
+             `DO Limit` = dplyr::recode_factor(`DO Criteria`,
                                                "6.5" = "6.5 mg/L (Estuarine)",
                                                "8" = "8 mg/L or 90% (Cold Water - Aquatic Life)",
                                                "11" = "11 mg/L or 95% (Spawning)"))
@@ -514,9 +538,9 @@ server <- function(input,output,session){
     
   })
   
-  output$site <- renderTable({
-    sites[,c(1,2)]
-  })
+  # output$site <- renderTable({
+  #  sites[,c(1,2)]
+  # })
   
   # 2.4 Min DO plots ----
   # set colors
