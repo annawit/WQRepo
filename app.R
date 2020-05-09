@@ -152,11 +152,14 @@ ui <- fluidPage(
                                                  
                                                  tabPanel("Min DO (mg/L)",
                                                           wellPanel(
+                                                            
+                                                            tags$h3("Estuary Sites"),
                                                             plotlyOutput("mindoplot_e", height = 500),
                                                             
                                                             br(),
                                                             br(),
                                                             
+                                                            tags$h3("River/Stream Sites"),
                                                             plotlyOutput("mindoplot_r", height = 500),
                                                             
                                                             style = "background:white")
@@ -164,11 +167,14 @@ ui <- fluidPage(
                                                  
                                                  tabPanel("Min DO Saturation (%)",
                                                           wellPanel(
+                                                            
+                                                            tags$h3("Estuary Sites"),
                                                             plotlyOutput("mindosplot_e", height = 500),
                                                             
                                                             br(),
                                                             br(),
                                                             
+                                                            tags$h3("River/Stream Sites"),
                                                             plotlyOutput("mindosplot_r", height = 500),
                                                             
                                                             style = "background: white")
@@ -511,23 +517,23 @@ server <- function(input,output,session){
   
   # 2.3 Sample summary plots ----
   #ss <- reactive({
-   # dta1 %>% 
-    #  select(MLocID, StationDes,datetime,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
-    #  group_by(month = floor_date(datetime,"month")) %>% 
-    #  group_by(MLocID,StationDes,month,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
-    #  summarise(n=n()) %>% 
-    #  ungroup() %>% 
-    #  spread(DO_status,n,fill = 0) %>% 
-    #  rename(over = "Meets criteria",
-    #         under = "Excursion") %>% 
-    #  mutate(month = as.Date(month),
-    #         Spawning = dplyr::recode(as.factor(in_spawn),
-    #                                  "TRUE" = "In spawning",
-    #                                  "FALSE" = "Not in spawning"),
-    #         `DO Limit` = dplyr::recode_factor(DO_lim,
-    #                                           "6.5" = "6.5 mg/L (Estuarine)",
-    #                                           "8" = "8 mg/L or 90% (Cold Water - Aquatic Life)",
-    #                                           "11" = "11 mg/L or 95% (Spawning)"))
+  # dta1 %>% 
+  #  select(MLocID, StationDes,datetime,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
+  #  group_by(month = floor_date(datetime,"month")) %>% 
+  #  group_by(MLocID,StationDes,month,in_spawn,DO_lim,DO_sat_lim,DO_status) %>% 
+  #  summarise(n=n()) %>% 
+  #  ungroup() %>% 
+  #  spread(DO_status,n,fill = 0) %>% 
+  #  rename(over = "Meets criteria",
+  #         under = "Excursion") %>% 
+  #  mutate(month = as.Date(month),
+  #         Spawning = dplyr::recode(as.factor(in_spawn),
+  #                                  "TRUE" = "In spawning",
+  #                                  "FALSE" = "Not in spawning"),
+  #         `DO Limit` = dplyr::recode_factor(DO_lim,
+  #                                           "6.5" = "6.5 mg/L (Estuarine)",
+  #                                           "8" = "8 mg/L or 90% (Cold Water - Aquatic Life)",
+  #                                           "11" = "11 mg/L or 95% (Spawning)"))
   #})
   
   ss <- reactive({
@@ -604,9 +610,11 @@ server <- function(input,output,session){
             mode = "markers",
             type = "scatter",
             marker = list(size = 10,alpha = 0.8)) %>%
-      layout(title = list(text = "Estuary Sites",x = 0),
+      layout(title = list(text = "",x = 0),
              showlegend = T,
-             xaxis = list(title = "Month",
+             legend = list(orientation = "h",
+                           x=0),
+             xaxis = list(title = "",
                           range = c("2007-01-01", "2017-01-31")),
              yaxis = list(title = "Dissolved Oxygen (mg/L)",
                           range = c(-1, 13)),
@@ -652,12 +660,11 @@ server <- function(input,output,session){
             marker = list(size = 10,alpha = 0.8),
             symbol = ~in_spawn,
             symbols = c("circle","x")) %>%
-      layout(title = list(text = "River/Stream Sites",x = 0),
+      layout(title = list(text = "",x = 0),
              showlegend = T,
-             # margin = marginlist,
-             # paper_bgcolor = "#ecf0f1",
-             # plot_bgcolor = "#ecf0f1",
-             xaxis = list(title = "Month",
+             legend = list(orientation = "h",
+                           x=0),
+             xaxis = list(title = "",
                           range = c("2007-01-01", "2017-01-31")),
              yaxis = list(title = "Dissolved Oxygen (mg/L)",
                           range = c(-1, 13))) %>% 
@@ -717,9 +724,11 @@ server <- function(input,output,session){
             mode = "markers",
             type = "scatter",
             marker = list(size = 10,alpha = 0.8)) %>%
-      layout(title = list(text = "Estuary Sites",x = 0),
+      layout(title = list(text = "",x = 0),
              showlegend = T,
-             xaxis = list(title = "Month",
+             legend = list(orientation = "h",
+                           x=0),
+             xaxis = list(title = "",
                           range = c("2007-01-01", "2017-01-31")),
              yaxis = list(title = "Dissolved Oxygen Saturation (%)",
                           range = c(0,110))
@@ -752,12 +761,11 @@ server <- function(input,output,session){
             marker = list(size = 10,alpha = 0.8),
             symbol = ~in_spawn,
             symbols = c("circle","x")) %>%
-      layout(title = list(text = "River/Stream Sites",x = 0),
+      layout(title = list(text = "",x = 0),
              showlegend = T,
-             # margin = marginlist,
-             # paper_bgcolor = "#ecf0f1",
-             # plot_bgcolor = "#ecf0f1",
-             xaxis = list(title = "Month",
+             legend = list(orientation = "h",
+                           x=0),
+             xaxis = list(title = "",
                           range = c("2007-01-01", "2017-01-31")),
              yaxis = list(title = "Dissolved Oxygen Saturation (%)",
                           range = c(0, 130))) %>% 

@@ -10,6 +10,7 @@
 
 library("tidyverse"); library("lubridate"); library("dplyr")
 
+setwd("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo")
 # original data, called dta2
 ## setwd("~/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/NorthCoastDO")
 load("data/ShinyAllData.Rdata")
@@ -54,9 +55,9 @@ DO_base <- DO_base_1 %>%
 
 
 # combine Sand Lake Data ----
-b <- read.csv("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo/data/SandLake_Beltz_b.csv")
-d <- read.csv("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo/data/SandLake_Beltz_Beaver_Dam_d.csv")
-n <- read.csv("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo/data/SandLake_NNSLWC_n.csv")
+b <- read.csv("data/SandLake_Beltz_b.csv")
+d <- read.csv("data/SandLake_Beltz_Beaver_Dam_d.csv")
+n <- read.csv("data/SandLake_NNSLWC_n.csv")
 
 b <- b %>% 
   select(date,time,site,lat,long,do,do_sat,spcond,sal,temp,pH,depth)
