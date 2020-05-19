@@ -166,7 +166,8 @@ dta4 <- DO_base %>%
     # code in_spawn column as 1. in other words, 1 means you are in the spawning season
     # zero means you are not in the spawning season
     in_spawn = ifelse(datetime >= SpawnStart & datetime <= SpawnEnd & !is.na(SpawnStart), TRUE, FALSE),
-    DO_lim = ifelse(in_spawn == 1, 11, crit_Instant),
+    DO_lim = ifelse(MonLocType == "Estuary",6.5,
+                    ifelse(in_spawn == 1, 11, 8)),
     DO_sat_lim = ifelse(MonLocType == "River/Stream" & in_spawn == 1, "95%",
                         ifelse(MonLocType == "River/Stream" & in_spawn == 0, "90%", NA)),
     # in estuary, if DO > 6.5, meets criteria, otherwise, DO excursion
@@ -226,7 +227,7 @@ dta <- dta1 %>%
          `Temperature Grade` = grade_temp,
          `pH` = ph,
          `pH Grade` = grade_ph,
-         "Specific Conductivity (\u03BCS)" = spcond,
+         "Specific Conductivity (uS)" = spcond,
          `Specific Conductivity Grade` = grade_spcond,
          `Dissolved Oxygen (mg/L)` = do,
          `Dissolved Oxygen Grade` = grade_do,

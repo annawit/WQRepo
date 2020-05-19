@@ -10,6 +10,7 @@ library(viridis)
 library(RColorBrewer)
 library(tools); library(tidyr)
 library(tidyverse); library(lubridate); library(dplyr)
+library(DT)
 
 load("finaldata.RData")
 
@@ -50,7 +51,7 @@ ui <- fluidPage(
                                     # __1.1.3 Leaflet map and data table ----
                                     mainPanel(
                                       wellPanel(
-                                        tags$style(type = "text/css", "#map {height: calc(80vh - 80px) !important;}"),
+                                        # tags$style(type = "text/css", "#map {height: calc(80vh - 80px) !important;}"),
                                         leafletOutput("map")),
                                       wellPanel(
                                         DT::dataTableOutput("table"),
@@ -311,7 +312,7 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
+                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)", 
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
@@ -328,7 +329,7 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
+                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)",  
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
@@ -345,13 +346,13 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
+                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)",  
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
                                                      "Data Source" = "Data Source"),
-                                         selected = "Specific Conductivity (?S)"
+                                         selected = "pH"
                                        ),
                                        
                                        selectInput(
@@ -362,22 +363,22 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
+                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)",  
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
                                                      "Data Source" = "Data Source"),
-                                         selected = "pH"
+                                         selected = "Specific Conductivity (uS)"
                                        ),
                                        
                                        dateRangeInput(
                                          inputId = "daterange",
                                          label = "Select dates:",
-                                         start = min(dta1$Date),
-                                         end = max(dta1$Date),
-                                         min = min(dta1$Date),
-                                         max = max(dta1$Date),
+                                         start = min(dta$Date),
+                                         end = max(dta$Date),
+                                         min = min(dta$Date),
+                                         max = max(dta$Date),
                                          separator = "to",
                                          format = "yyyy-mm-dd",
                                          startview = "year",
@@ -435,7 +436,7 @@ server <- function(input,output,session){
       addLegend("bottomright",
                 pal = pctcolor,
                 values = meets$pctbin,
-                title = "Note:<br>Piont/Site size represents sample size<br><br>Color Legend") %>% 
+                title = "Note:<br>Point/Site size represents sample size<br><br>Color Legend") %>% 
       addResetMapButton() %>% 
       addFullscreenControl(pseudoFullscreen = TRUE)
     
@@ -906,10 +907,10 @@ server <- function(input,output,session){
     
     stations_subset_tb <- reactive({
       stations_subset() %>% 
-        select(MLocID, `Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, `Dissolved Oxygen Grade`,
+        select(MLocID, `Station Description`, `Sample Time`,`Dissolved Oxygen (mg/L)`, `Dissolved Oxygen Grade`,
                `Dissolved Oxygen Saturation (%)`, `Dissolved Oxygen Saturation Grade`, `DO Status`, `Temperature (°C)`,
-               `Temperature Grade`, pH, `pH Grade`, `Specific Conductivity (µS)`, `Specific Conductivity Grade`, `Data Source`) %>% 
-        select(MLocID,`Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, input$x, input$y2, input$y3, input$y4)
+               `Temperature Grade`, pH, `pH Grade`, `Specific Conductivity (uS)`, `Specific Conductivity Grade`, `Data Source`) %>% 
+        select(MLocID, `Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, input$x, input$y2, input$y3, input$y4)
       
     })
     
