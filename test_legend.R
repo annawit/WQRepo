@@ -10,9 +10,7 @@ library(viridis)
 library(RColorBrewer)
 library(tools); library(tidyr)
 library(tidyverse); library(lubridate); library(dplyr)
-library(DT)
 
-setwd("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo")
 load("finaldata.RData")
 
 # 1. UI ----
@@ -20,47 +18,8 @@ ui <- fluidPage(
   theme = shinytheme("flatly"),
   navbarPage("Continuous Dissolved Oxygen Visualizer",
              
-             
-             # 1.0 Welcome ----
-             tabPanel("Welcome",
-                      
-                      setBackgroundImage(src = "SandLake_North_High.jpg"),
-                      
-                      wellPanel(
-                        
-                        style = "opacity: 0.8",
-                        
-                        # img(src = "SandLake_North_Low.jpg"),
-                        
-                        tags$h1("Welcome to Visualization Tool for Continuous Water Quality Data"),
-                        br(),
-                        br(),
-                        
-                        tags$h3("INTRODUCTION"),
-                       
-                        tags$h5("This project arose out of a need to inform future monitoring strategies for dissolved oxygen in estuaries and rivers in the North Coast and to disseminate complex information to agency staff and partners.  The tool is built on the R Shiny platform, and allows the user to explore time series at varying scales and summary statistics related to continuous water quality data collected sine 2007 on the North Coast.  An interactive map allows the user to survey the spatial distribution of data.  All data can be queried with specific search criteria and downloaded as text files, such as PDF and Excel spreadsheet.   The tool is currently being deployed within the agency.  The goal is to deploy the application so that local stakeholders and partners can invest in the detailed characteristic of the water quality data for the North Coast area. Expansion to other areas also is possible."),
-                        br(),
-                       
-                        tags$h3("THIS ANALYSIS"),
-                        
-                        tags$h5("The analysis of the north coast continuous dissolved oxygen data includes:"),
-                       
-                        tags$h5("1. Station summaries: (1) Display of a map, station information in text, and data table; (2) Summary of sample counts and percent of DO samples meeting criteria."),
-                       
-                        tags$h5("2. DO sample summaries: (1) DO status summarized by sample counts based on sites, months, spawning periods, and DO criteria; (bar charts) (2) Monthly minimum DO and DO saturation; (scatter plots) (3) DO and DO saturation data visualization by combinations of sites, season and year; (boxplots)"),
-                     
-                        tags$h5("3.Variables comparison among DO, temperature, temperature grade, pH, pH grade, conductivity, conductivity grade, DO grade, DO saturation, and DO saturation grade, with sample time and data source."),
-                        br(),
-                        
-                        tags$a(href = "https://github.com/dsobota/WQRepo/tree/yg_ncdo_branch", "Click here and visit project GitHub site for R codes.")
-                        
-                      )),
-             
-             
              # 1.1 Select from map ----
              tabPanel("Select from map",
-                      
-                      style = "background: white",
                       
                       sidebarLayout(position = "right",
                                     
@@ -91,7 +50,7 @@ ui <- fluidPage(
                                     # __1.1.3 Leaflet map and data table ----
                                     mainPanel(
                                       wellPanel(
-                                        # tags$style(type = "text/css", "#map {height: calc(80vh - 80px) !important;}"),
+                                        tags$style(type = "text/css", "#map {height: calc(80vh - 80px) !important;}"),
                                         leafletOutput("map")),
                                       wellPanel(
                                         DT::dataTableOutput("table"),
@@ -106,8 +65,6 @@ ui <- fluidPage(
              
              # 1.2 Overview plots ----
              tabPanel("Overview Plots",
-                      
-                      style = "background: white",
                       
                       tabsetPanel(
                         # __1.2.1 Sample Summary ----
@@ -305,13 +262,9 @@ ui <- fluidPage(
              
              # 1.3 Display continuous data ----
              tabPanel("Display Continuous Data",
-                      
-                      style = "background: white",
-                      
                       fluidPage(
-  
                         tabsetPanel(
-
+                          
                           # __1.3.1 Plots ----
                           tabPanel("Plots",
                                    sidebarLayout(
@@ -358,7 +311,7 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)", 
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
@@ -375,7 +328,7 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)",  
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
@@ -392,13 +345,13 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)",  
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
                                                      "Data Source" = "Data Source"),
-                                         selected = "pH"
+                                         selected = "Specific Conductivity (?S)"
                                        ),
                                        
                                        selectInput(
@@ -409,22 +362,22 @@ ui <- fluidPage(
                                                      "Temperature Grade" = "Temperature Grade", 
                                                      "pH" = "pH", 
                                                      "pH Grade" = "pH Grade",
-                                                     "Specific Conductivity (uS)" = "Specific Conductivity (uS)",  
+                                                     "Specific Conductivity (\u03BCS)" = "Specific Conductivity (\u03BCS)", 
                                                      "Specific Conductivity Grade" = "Specific Conductivity Grade", 
                                                      "Dissolved Oxygen Grade" = "Dissolved Oxygen Grade",
                                                      "Dissolved Oxygen Saturation (%)" = "Dissolved Oxygen Saturation (%)", 
                                                      "Dissolved Oxygen Saturation Grade" = "Dissolved Oxygen Saturation Grade", 
                                                      "Data Source" = "Data Source"),
-                                         selected = "Specific Conductivity (uS)"
+                                         selected = "pH"
                                        ),
                                        
                                        dateRangeInput(
                                          inputId = "daterange",
                                          label = "Select dates:",
-                                         start = min(dta$Date),
-                                         end = max(dta$Date),
-                                         min = min(dta$Date),
-                                         max = max(dta$Date),
+                                         start = min(dta1$Date),
+                                         end = max(dta1$Date),
+                                         min = min(dta1$Date),
+                                         max = max(dta1$Date),
                                          separator = "to",
                                          format = "yyyy-mm-dd",
                                          startview = "year",
@@ -482,7 +435,7 @@ server <- function(input,output,session){
       addLegend("bottomright",
                 pal = pctcolor,
                 values = meets$pctbin,
-                title = "Note:<br>Point/Site size represents sample size<br><br>Color Legend") %>% 
+                title = "Note:<br>Piont/Site size represents sample size<br><br>Color Legend") %>% 
       addResetMapButton() %>% 
       addFullscreenControl(pseudoFullscreen = TRUE)
     
@@ -953,10 +906,10 @@ server <- function(input,output,session){
     
     stations_subset_tb <- reactive({
       stations_subset() %>% 
-        select(MLocID, `Station Description`, `Sample Time`,`Dissolved Oxygen (mg/L)`, `Dissolved Oxygen Grade`,
+        select(MLocID, `Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, `Dissolved Oxygen Grade`,
                `Dissolved Oxygen Saturation (%)`, `Dissolved Oxygen Saturation Grade`, `DO Status`, `Temperature (°C)`,
-               `Temperature Grade`, pH, `pH Grade`, `Specific Conductivity (uS)`, `Specific Conductivity Grade`, `Data Source`) %>% 
-        select(MLocID, `Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, input$x, input$y2, input$y3, input$y4)
+               `Temperature Grade`, pH, `pH Grade`, `Specific Conductivity (µS)`, `Specific Conductivity Grade`, `Data Source`) %>% 
+        select(MLocID,`Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, input$x, input$y2, input$y3, input$y4)
       
     })
     
