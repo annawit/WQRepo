@@ -5,30 +5,29 @@
 ##install.packages("RColorBrewer")
 library(shiny); library(shinythemes); library(shinyWidgets)
 library(leaflet); library(leaflet.extras)
-library(plotly);library(ggplot2)
+library(plotly); library(ggplot2)
 library(viridis)
 library(RColorBrewer)
 library(tools); library(tidyr)
 library(tidyverse); library(lubridate); library(dplyr)
 library(DT)
-
-setwd("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo")
+# setwd("E:/PROJECTS/20190709_DanSobota_NorthCoastContinuousDissolvedOxygenVisualizer/GitHub/WQRepo")
 load("finaldata.RData")
 
 # 1. UI ----
 ui <- fluidPage(
-  theme = shinytheme("flatly"),
+  theme = shinythemes::shinytheme("flatly"),
   navbarPage("Continuous Dissolved Oxygen Visualizer",
              
              
              # 1.0 Welcome ----
              tabPanel("Welcome",
                       
-                      setBackgroundImage(src = "SandLake_North_High.jpg"),
+                      shinyWidgets::setBackgroundImage(src = "SandLake_North_High.jpg"),
                       
                       wellPanel(
                         
-                        style = "opacity: 0.8",
+                        # style = "opacity: 0.8",
                         
                         # img(src = "SandLake_North_Low.jpg"),
                         
@@ -71,12 +70,12 @@ ui <- fluidPage(
                                       wellPanel(
                                         uiOutput("youhavechosen"),
                                         hr(),
-                                        plotlyOutput("samplect") # sample counts
+                                        plotly::plotlyOutput("samplect") # sample counts
                                       ),
                                       
                                       # __1.1.2 Table columns selector ----
                                       wellPanel(
-                                        checkboxGroupButtons(
+                                        shinyWidgets::checkboxGroupButtons(
                                           inputId = "tablecolumnselector",
                                           label = "Select table columns to display:",
                                           choices = names(dta[,c(1:19,22:25)]),
@@ -92,7 +91,7 @@ ui <- fluidPage(
                                     mainPanel(
                                       wellPanel(
                                         # tags$style(type = "text/css", "#map {height: calc(80vh - 80px) !important;}"),
-                                        leafletOutput("map")),
+                                        leaflet::leafletOutput("map")),
                                       wellPanel(
                                         DT::dataTableOutput("table"),
                                         style = "background: white")
@@ -136,7 +135,7 @@ ui <- fluidPage(
                                        style = "background: white"
                                      ),
                                      wellPanel(
-                                       plotlyOutput("summaryplot", height = 800),
+                                       plotly::plotlyOutput("summaryplot", height = 800),
                                        style = "background: white"
                                      )
                                    )
@@ -197,13 +196,13 @@ ui <- fluidPage(
                                                           wellPanel(
                                                             
                                                             tags$h3("Estuary Sites"),
-                                                            plotlyOutput("mindoplot_e", height = 500),
+                                                            plotly::plotlyOutput("mindoplot_e", height = 500),
                                                             
                                                             br(),
                                                             br(),
                                                             
                                                             tags$h3("River/Stream Sites"),
-                                                            plotlyOutput("mindoplot_r", height = 500),
+                                                            plotly::plotlyOutput("mindoplot_r", height = 500),
                                                             
                                                             style = "background:white")
                                                  ),
@@ -212,13 +211,13 @@ ui <- fluidPage(
                                                           wellPanel(
                                                             
                                                             tags$h3("Estuary Sites"),
-                                                            plotlyOutput("mindosplot_e", height = 500),
+                                                            plotly::plotlyOutput("mindosplot_e", height = 500),
                                                             
                                                             br(),
                                                             br(),
                                                             
                                                             tags$h3("River/Stream Sites"),
-                                                            plotlyOutput("mindosplot_r", height = 500),
+                                                            plotly::plotlyOutput("mindosplot_r", height = 500),
                                                             
                                                             style = "background: white")
                                                  )
@@ -252,7 +251,7 @@ ui <- fluidPage(
                                                  )
                                      ),
                                      
-                                     pickerInput("boxplotsites",
+                                     shinyWidgets::pickerInput("boxplotsites",
                                                  "Select sites:",
                                                  choices = list(
                                                    Estuarine = 
@@ -290,10 +289,10 @@ ui <- fluidPage(
                                      width = 9,
                                      wellPanel(
                                        style = "background: white",
-                                       plotlyOutput("summaryboxplot"),
+                                       plotly::plotlyOutput("summaryboxplot"),
                                        br(),
                                        br(),
-                                       plotlyOutput("summaryboxplot_s")
+                                       plotly::plotlyOutput("summaryboxplot_s")
                                      )
                                    )
                                  )
@@ -317,7 +316,7 @@ ui <- fluidPage(
                                    sidebarLayout(
                                      sidebarPanel(
                                        width = 3,
-                                       pickerInput(inputId = "station_selection", 
+                                       shinyWidgets::pickerInput(inputId = "station_selection", 
                                                    label = h3("Select sites:"), 
                                                    choices = list(
                                                      Estuarine = 
@@ -434,7 +433,7 @@ ui <- fluidPage(
                                      ),
                                      
                                      mainPanel(
-                                       plotlyOutput("subplot", height = 800)
+                                       plotly::plotlyOutput("subplot", height = 800)
                                      )
                                    )
                           ),
@@ -463,14 +462,14 @@ server <- function(input,output,session){
                                                  "More than 50% samples meet criteria",
                                                  "Less than 50% samples meet criteria",
                                                  "No samples meet criteria"))
-  pctcolor <- colorFactor(palette = c("blue","green","orange","red"), domain = meets$pctbin)
-  output$map <- renderLeaflet({
-    leaflet() %>% 
-      addProviderTiles("Esri.WorldImagery",group = "Esir Satellite Map") %>% 
-      addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>% 
-      addProviderTiles("CartoDB", group = "Carto Map") %>% 
-      addLayersControl(baseGroups = c("Esir Satellite Map","Open Topo Map","Carto Map")) %>% 
-      addCircleMarkers(data = s,
+  pctcolor <- leaflet::colorFactor(palette = c("blue","green","orange","red"), domain = meets$pctbin)
+  output$map <- leaflet::renderLeaflet({
+    leaflet::leaflet() %>% 
+      leaflet::addProviderTiles("Esri.WorldImagery",group = "Esir Satellite Map") %>% 
+      leaflet::addProviderTiles("OpenTopoMap", group = "Open Topo Map") %>% 
+      leaflet::addProviderTiles("CartoDB", group = "Carto Map") %>% 
+      leaflet::addLayersControl(baseGroups = c("Esir Satellite Map","Open Topo Map","Carto Map")) %>% 
+      leaflet::addCircleMarkers(data = s,
                        lat = ~ Lat,
                        lng = ~ Long,
                        color = ~ pctcolor(pctbin),
@@ -479,20 +478,20 @@ server <- function(input,output,session){
                        label = ~ paste0("Station ID:", MLocID, " ", `Station Description`),
                        labelOptions = labelOptions(textOnly = FALSE),
                        layerId = s$`Station Description`) %>% 
-      addLegend("bottomright",
+      leaflet::addLegend("bottomright",
                 pal = pctcolor,
                 values = meets$pctbin,
                 title = "Note:<br>Point/Site size represents sample size<br><br>Color Legend") %>% 
-      addResetMapButton() %>% 
-      addFullscreenControl(pseudoFullscreen = TRUE)
+      leaflet.extras::addResetMapButton() %>% 
+      leaflet.extras::addFullscreenControl(pseudoFullscreen = TRUE)
     
   })
   
   # 2.2 Map table and info ----
   maptable <- reactive({
     dta %>%
-      filter(`Station Description` == input$map_marker_click$id) %>% 
-      select(input$tablecolumnselector)
+      dplyr::filter(`Station Description` == input$map_marker_click$id) %>% 
+      dplyr::select(input$tablecolumnselector)
     
   })
   
@@ -524,7 +523,7 @@ server <- function(input,output,session){
     req(input$map_marker_click$id)
     
     d <- s %>% 
-      filter(`Station Description` == input$map_marker_click$id)
+      dplyr::filter(`Station Description` == input$map_marker_click$id)
     
     HTML(paste(
       tags$h4(d$'Station Description'),
@@ -550,14 +549,14 @@ server <- function(input,output,session){
                          br()))
     
     dta1 %>%
-      filter(StationDes == input$map_marker_click$id) %>%
-      group_by(month = floor_date(datetime,"month")) %>% 
-      mutate(year = floor_date(datetime,"year")) %>% 
-      summarize(n_samples = n()) %>%
-      plot_ly(x = ~ month,
+      dplyr::filter(StationDes == input$map_marker_click$id) %>%
+      dplyr::group_by(month = floor_date(datetime,"month")) %>% 
+      dplyr::mutate(year = floor_date(datetime,"year")) %>% 
+      dplyr::summarize(n_samples = n()) %>%
+      plotly::plot_ly(x = ~ month,
               y = ~ n_samples,
               type = "bar") %>% 
-      layout(yaxis = list(title = "Sample Counts"),
+      plotly::layout(yaxis = list(title = "Sample Counts"),
              xaxis = list(title = "Month",
                           range = c(min(dta1$datetime),max(dta1$datetime))))
   })
@@ -585,15 +584,15 @@ server <- function(input,output,session){
   
   ss <- reactive({
     dta %>% 
-      select(MLocID, `Station Description`,`Sample Time`,`During Spawning`,`DO Criteria`,`DO Saturation Criteria`,`DO Status`) %>% 
-      group_by(month = floor_date(`Sample Time`,"month")) %>% 
-      group_by(MLocID, `Station Description`,month,`During Spawning`,`DO Criteria`,`DO Saturation Criteria`,`DO Status`) %>% 
+      dplyr::select(MLocID, `Station Description`,`Sample Time`,`During Spawning`,`DO Criteria`,`DO Saturation Criteria`,`DO Status`) %>% 
+      dplyr::group_by(month = floor_date(`Sample Time`,"month")) %>% 
+      dplyr::group_by(MLocID, `Station Description`,month,`During Spawning`,`DO Criteria`,`DO Saturation Criteria`,`DO Status`) %>% 
       summarise(n=n()) %>% 
       ungroup() %>% 
       spread(`DO Status`,n,fill = 0) %>% 
       rename(over = "Meets criteria",
              under = "Excursion") %>% 
-      mutate(month = as.Date(month),
+      dplyr::mutate(month = as.Date(month),
              Spawning = dplyr::recode(as.factor(`During Spawning`),
                                       "TRUE" = "In spawning",
                                       "FALSE" = "Not in spawning"),
@@ -604,7 +603,7 @@ server <- function(input,output,session){
   })
   
   output$summaryplot <- renderPlotly({
-    plot_ly(ss(), x = ~get(input$plottype)) %>% 
+    plotly::plot_ly(ss(), x = ~get(input$plottype)) %>% 
       add_trace(y = ~over,
                 name = 'Meets criteria',
                 marker = list(color="blue"),
@@ -613,7 +612,7 @@ server <- function(input,output,session){
                 name = 'Excursion',
                 marker = list(color="red"),
                 type = 'bar') %>% 
-      layout(yaxis = list(title = 'Sample Counts'),
+      plotly::layout(yaxis = list(title = 'Sample Counts'),
              xaxis = list(title = tools::toTitleCase(input$plottype)))
     
   })
@@ -638,16 +637,16 @@ server <- function(input,output,session){
   wdi_e <- reactive({
     
     dta1 %>% 
-      select(MLocID,Site,StationDes,datetime,do) %>% 
-      group_by(MLocID, Site, StationDes, month = floor_date(datetime,"month")) %>% 
-      filter(Site %in% input$estuary_site) %>% 
-      summarize(min = min(do, na.rm = TRUE))
+      dplyr::select(MLocID,Site,StationDes,datetime,do) %>% 
+      dplyr::group_by(MLocID, Site, StationDes, month = floor_date(datetime,"month")) %>% 
+      dplyr::filter(Site %in% input$estuary_site) %>% 
+      dplyr::summarize(min = min(do, na.rm = TRUE))
     
   })
   
   output$mindoplot_e <- renderPlotly({
     req(wdi_e())
-    plot_ly(wdi_e(),
+    plotly::plot_ly(wdi_e(),
             x = ~month,
             y = ~min,
             text = ~paste("Site:", Site),
@@ -657,7 +656,7 @@ server <- function(input,output,session){
             mode = "markers",
             type = "scatter",
             marker = list(size = 10,alpha = 0.8)) %>%
-      layout(title = list(text = "",x = 0),
+      plotly::layout(title = list(text = "",x = 0),
              showlegend = T,
              legend = list(orientation = "h",
                            x=0),
@@ -683,11 +682,11 @@ server <- function(input,output,session){
   wdi_r <- reactive({
     
     dta1 %>% 
-      select(MLocID,Site,StationDes,datetime,do,DO_lim,in_spawn) %>% 
-      group_by(MLocID, Site, StationDes, DO_lim, in_spawn, month = floor_date(datetime,"month")) %>% 
-      filter(Site %in% input$river_site) %>% 
-      summarize(min = min(do, na.rm = TRUE)) %>% 
-      mutate(Spawning = dplyr::recode(as.factor(in_spawn),
+      dplyr::select(MLocID,Site,StationDes,datetime,do,DO_lim,in_spawn) %>% 
+      dplyr::group_by(MLocID, Site, StationDes, DO_lim, in_spawn, month = floor_date(datetime,"month")) %>% 
+      dplyr::filter(Site %in% input$river_site) %>% 
+      dplyr::summarize(min = min(do, na.rm = TRUE)) %>% 
+      dplyr::mutate(Spawning = dplyr::recode(as.factor(in_spawn),
                                       "TRUE" = "In spawning",
                                       "FALSE" = "Not in spawning"))
     
@@ -695,7 +694,7 @@ server <- function(input,output,session){
   
   output$mindoplot_r <- renderPlotly({
     
-    plot_ly(wdi_r(),
+    plotly::plot_ly(wdi_r(),
             x = ~month,
             y = ~min,
             text = ~paste("Site:", Site, " (",Spawning,")"),
@@ -707,7 +706,7 @@ server <- function(input,output,session){
             marker = list(size = 10,alpha = 0.8),
             symbol = ~in_spawn,
             symbols = c("circle","x")) %>%
-      layout(title = list(text = "",x = 0),
+      plotly::layout(title = list(text = "",x = 0),
              showlegend = T,
              legend = list(orientation = "h",
                            x=0),
@@ -753,15 +752,15 @@ server <- function(input,output,session){
   wdis_e <- reactive({
     
     dta1 %>% 
-      select(MLocID,Site,StationDes,datetime,do_sat_cor) %>% 
-      group_by(MLocID, Site, StationDes, month = floor_date(datetime,"month")) %>% 
-      filter(Site %in% input$estuary_site) %>% 
-      summarize(min = min(do_sat_cor, na.rm = TRUE))
+      dplyr::select(MLocID,Site,StationDes,datetime,do_sat_cor) %>% 
+      dplyr::group_by(MLocID, Site, StationDes, month = floor_date(datetime,"month")) %>% 
+      dplyr::filter(Site %in% input$estuary_site) %>% 
+      dplyr::summarize(min = min(do_sat_cor, na.rm = TRUE))
   })
   
   output$mindosplot_e <- renderPlotly({
     req(wdis_e())
-    plot_ly(wdis_e(),
+    plotly::plot_ly(wdis_e(),
             x = ~month,
             y = ~min,
             text = ~paste("Site:", Site),
@@ -771,7 +770,7 @@ server <- function(input,output,session){
             mode = "markers",
             type = "scatter",
             marker = list(size = 10,alpha = 0.8)) %>%
-      layout(title = list(text = "",x = 0),
+      plotly::layout(title = list(text = "",x = 0),
              showlegend = T,
              legend = list(orientation = "h",
                            x=0),
@@ -785,18 +784,18 @@ server <- function(input,output,session){
   wdis_r <- reactive({
     
     dta1 %>% 
-      select(MLocID,Site,StationDes,datetime,do_sat_cor,DO_lim,in_spawn) %>% 
-      group_by(MLocID, Site, StationDes, DO_lim, in_spawn, month = floor_date(datetime,"month")) %>% 
-      filter(Site %in% input$river_site) %>% 
-      summarize(min = min(do_sat_cor, na.rm = TRUE)) %>% 
-      mutate(Spawning = dplyr::recode(as.factor(in_spawn),
+      dplyr::select(MLocID,Site,StationDes,datetime,do_sat_cor,DO_lim,in_spawn) %>% 
+      dplyr::group_by(MLocID, Site, StationDes, DO_lim, in_spawn, month = floor_date(datetime,"month")) %>% 
+      dplyr::filter(Site %in% input$river_site) %>% 
+      dplyr::summarize(min = min(do_sat_cor, na.rm = TRUE)) %>% 
+      dplyr::mutate(Spawning = dplyr::recode(as.factor(in_spawn),
                                       "TRUE" = "In spawning",
                                       "FALSE" = "Not in spawning"))
   })
   
   output$mindosplot_r <- renderPlotly({
     req(wdis_r())
-    plot_ly(wdis_r(),
+    plotly::plot_ly(wdis_r(),
             x = ~month,
             y = ~min,
             text = ~paste("Site:", Site, " (",Spawning,")"),
@@ -808,7 +807,7 @@ server <- function(input,output,session){
             marker = list(size = 10,alpha = 0.8),
             symbol = ~in_spawn,
             symbols = c("circle","x")) %>%
-      layout(title = list(text = "",x = 0),
+      plotly::layout(title = list(text = "",x = 0),
              showlegend = T,
              legend = list(orientation = "h",
                            x=0),
@@ -850,33 +849,33 @@ server <- function(input,output,session){
   boxplotdata <- reactive({
     
     dta1 %>% 
-      mutate(month = floor_date(datetime,"month")) %>% 
-      mutate(season = factor(month.abb[month(month)],
+      dplyr::mutate(month = floor_date(datetime,"month")) %>% 
+      dplyr::mutate(season = factor(month.abb[month(month)],
                              levels = c("May","Jun","Jul","Aug", "Oct","Nov"))) %>% 
-      mutate(year = factor(year(floor_date(datetime,"year")))) %>% 
-      filter(Site %in% input$boxplotsites)
+      dplyr::mutate(year = factor(year(floor_date(datetime,"year")))) %>% 
+      dplyr::filter(Site %in% input$boxplotsites)
   })
   
   output$summaryboxplot <- renderPlotly({
-    plot_ly(boxplotdata(),
+    plotly::plot_ly(boxplotdata(),
             x = ~get(input$boxplot),
             y = ~do,
             color = ~get(input$boxplotgrp),
             # colors = viridis_pal(option = "D")(6),
             type = "box") %>% 
-      layout(boxmode = 'group',
+      plotly::layout(boxmode = 'group',
              xaxis = list(title = tools::toTitleCase(input$boxplot)),
              yaxis = list(title = "Dissolved Oxygen (mg/L)"))
   })
   
   output$summaryboxplot_s <- renderPlotly({
-    plot_ly(boxplotdata(),
+    plotly::plot_ly(boxplotdata(),
             x = ~get(input$boxplot),
             y = ~do_sat_cor,
             color = ~get(input$boxplotgrp),
             # colors = viridis_pal(option = "D")(6),
             type = "box") %>% 
-      layout(boxmode = 'group',
+      plotly::layout(boxmode = 'group',
              xaxis = list(title = tools::toTitleCase(input$boxplot)),
              yaxis = list(title = "Dissolved Oxygen Saturation (%)"))
   })
@@ -886,15 +885,15 @@ server <- function(input,output,session){
   
   stations_subset <- reactive({
     dta %>% 
-      filter(Site == input$station_selection) %>% 
-      filter(Date >= input$daterange[1],
+      dplyr::filter(Site == input$station_selection) %>% 
+      dplyr::filter(Date >= input$daterange[1],
              Date <= input$daterange[2])
   })
   
   
   output$subplot <- renderPlotly({
     
-    a <- plot_ly(stations_subset(),
+    a <- plotly::plot_ly(stations_subset(),
                  x = ~get(input$x),
                  y = ~`Dissolved Oxygen (mg/L)`,
                  type = "scatter",
@@ -902,43 +901,43 @@ server <- function(input,output,session){
                  color = ~`DO Status`,
                  colors = do_col,
                  showlegend = TRUE) %>% 
-      layout(yaxis = list(title = "Dissolved Oxygen (mg/L)"),
+      plotly::layout(yaxis = list(title = "Dissolved Oxygen (mg/L)"),
              xaxis = list(showline = TRUE, zeroline = FALSE))
     
-    b <- plot_ly(stations_subset(),
+    b <- plotly::plot_ly(stations_subset(),
                  x = ~get(input$x),
                  y = ~get(input$y2),
                  type = "scatter",
                  mode = "markers",
                  marker = list(color = "black"),
                  showlegend = FALSE) %>% 
-      layout(yaxis = list(title = toTitleCase(input$y2)),
+      plotly::layout(yaxis = list(title = toTitleCase(input$y2)),
              xaxis = list(showline = TRUE, zeroline = FALSE))
     
-    c <- plot_ly(stations_subset(),
+    c <- plotly::plot_ly(stations_subset(),
                  x = ~get(input$x),
                  y = ~get(input$y3),
                  type = "scatter",
                  mode = "markers",
                  marker = list(color = "green"),
                  showlegend = FALSE) %>% 
-      layout(yaxis = list(title = toTitleCase(input$y3)),
+      plotly::layout(yaxis = list(title = toTitleCase(input$y3)),
              xaxis = list(showline = TRUE, zeroline = FALSE))
     
-    d <- plot_ly(stations_subset(),
+    d <- plotly::plot_ly(stations_subset(),
                  x = ~get(input$x),
                  y = ~get(input$y4),
                  type = "scatter",
                  mode = "markers",
                  marker = list(color = "purple"),
                  showlegend = FALSE) %>% 
-      layout(yaxis = list(title = toTitleCase(input$y4)),
+      plotly::layout(yaxis = list(title = toTitleCase(input$y4)),
              xaxis = list(showline = TRUE, zeroline = FALSE))
     
     sp <- subplot(a,b,c,d, nrows = 4, shareX = TRUE, titleY = TRUE)
     
     sp %>% 
-      layout(
+      plotly::layout(
         xaxis = list(
           title = toTitleCase(input$x),
           rangeselector = list()
@@ -953,10 +952,10 @@ server <- function(input,output,session){
     
     stations_subset_tb <- reactive({
       stations_subset() %>% 
-        select(MLocID, `Station Description`, `Sample Time`,`Dissolved Oxygen (mg/L)`, `Dissolved Oxygen Grade`,
+        dplyr::select(MLocID, `Station Description`, `Sample Time`,`Dissolved Oxygen (mg/L)`, `Dissolved Oxygen Grade`,
                `Dissolved Oxygen Saturation (%)`, `Dissolved Oxygen Saturation Grade`, `DO Status`, `Temperature (°C)`,
                `Temperature Grade`, pH, `pH Grade`, `Specific Conductivity (uS)`, `Specific Conductivity Grade`, `Data Source`) %>% 
-        select(MLocID, `Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, input$x, input$y2, input$y3, input$y4)
+        dplyr::select(MLocID, `Station Description`, `Sample Time`, `Dissolved Oxygen (mg/L)`, input$x, input$y2, input$y3, input$y4)
       
     })
     
