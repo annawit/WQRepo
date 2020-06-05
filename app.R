@@ -37,21 +37,48 @@ ui <- fluidPage(
                         
                         tags$h3("INTRODUCTION"),
                        
-                        tags$h5("This project arose out of a need to inform future monitoring strategies for dissolved oxygen in estuaries and rivers in the North Coast and to disseminate complex information to agency staff and partners.  The tool is built on the R Shiny platform, and allows the user to explore time series at varying scales and summary statistics related to continuous water quality data collected sine 2007 on the North Coast.  An interactive map allows the user to survey the spatial distribution of data.  All data can be queried with specific search criteria and downloaded as text files, such as PDF and Excel spreadsheet.   The tool is currently being deployed within the agency.  The goal is to deploy the application so that local stakeholders and partners can invest in the detailed characteristic of the water quality data for the North Coast area. Expansion to other areas also is possible."),
+                        tags$h5("This tool arose out of a need to inform future 
+                                monitoring strategies for dissolved oxygen in 
+                                estuaries and rivers in the North Coast and to 
+                                disseminate complex information to agency staff 
+                                and local stakeholders.  The tool is built on 
+                                the R Shiny platform, and allows the user to 
+                                explore time series at varying scales and 
+                                summary statistics related to continuous water 
+                                quality data collected sine 2007 on the North Coast.  
+                                An interactive map allows the user to explore 
+                                the spatial distribution of data.  Interactive 
+                                graphs allow the user to investigate dissolved 
+                                oxygen and relate water quality data for the 
+                                sampling sites.  All data can be queried with 
+                                specific search criteria and downloaded as a 
+                                text file, PDF, or an Excel spreadsheet."),
                         br(),
                        
                         tags$h3("THIS ANALYSIS"),
                         
-                        tags$h5("The analysis of the north coast continuous dissolved oxygen data includes:"),
+                        tags$h5("The analysis of the North Coast continuous 
+                                dissolved oxygen data includes:"),
                        
-                        tags$h5("1. Station summaries: (1) Display of a map, station information in text, and data table; (2) Summary of sample counts and percent of DO samples meeting criteria."),
+                        tags$h5("1. Station summaries: (1) Display of a map, 
+                                station information in text and data table; 
+                                (2) Summary of sample counts and percent of DO 
+                                samples meeting criteria."),
                        
-                        tags$h5("2. DO sample summaries: (1) DO status summarized by sample counts based on sites, months, spawning periods, and DO criteria; (bar charts) (2) Monthly minimum DO and DO saturation; (scatter plots) (3) DO and DO saturation data visualization by combinations of sites, season and year; (boxplots)"),
+                        tags$h5("2. DO data summaries: (1) DO status summarized 
+                                by sample counts based on sites, months, spawning 
+                                periods, and DO criteria; (bar charts) (2) Monthly 
+                                minimum DO and DO saturation; (scatter plots) (3) 
+                                DO and DO saturation data visualization by 
+                                combinations of sites, season and year; (boxplots)"),
                      
-                        tags$h5("3.Variables comparison among DO, temperature, temperature grade, pH, pH grade, conductivity, conductivity grade, DO grade, DO saturation, and DO saturation grade, with sample time and data source."),
+                        tags$h5("3.Comparison among DO, temperature, 
+                                temperature grade, pH, pH grade, conductivity, 
+                                conductivity grade, DO grade, DO saturation, and 
+                                DO saturation grade, with sample time and data source."),
                         br(),
                         
-                        tags$a(href = "https://github.com/dsobota/WQRepo/tree/yg_ncdo_branch", "Click here and visit project GitHub site for R codes.")
+                        tags$a(href = "https://github.com/dsobota/WQRepo/tree/yg_ncdo_branch", "Click here and visit GitHub project site for R code.")
                         
                       )),
              
